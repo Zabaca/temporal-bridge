@@ -11,11 +11,13 @@
         "run",
         "--allow-env",
         "--allow-net",
+        "--allow-read",
         "src/mcp-server.ts"
       ],
       "cwd": "/home/uptown/Projects/zabaca/temporal-bridge",
       "env": {
-        "ZEP_API_KEY": "${ZEP_API_KEY}"
+        "ZEP_API_KEY": "${ZEP_API_KEY}",
+        "PROJECT_DIR": "${PWD}"
       }
     }
   }

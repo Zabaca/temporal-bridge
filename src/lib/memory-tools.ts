@@ -261,7 +261,7 @@ export interface UnifiedMemoryResult {
   content: string;
   score?: number;
   timestamp?: string;
-  type: 'graph_search' | 'user_context' | 'recent_episodes';
+  type: 'graph_search' | 'user_context' | 'recent_episodes' | 'current_context';
   metadata: {
     scope?: string;
     thread_id?: string;
@@ -274,6 +274,36 @@ export interface UnifiedMemoryResult {
     recent_messages?: any[];
     [key: string]: any;
   };
+}
+
+/**
+ * Get current thread ID from project session file
+ */
+export async function getCurrentThreadId(): Promise<string> {
+  const config = getDefaultConfig();
+  const projectPath = Deno.env.get("PROJECT_DIR") || Deno.cwd();
+  
+  try {
+    // Read session ID from project directory
+    const sessionIdFile = `${projectPath}/.claude-session-id`;
+    const sessionId = await Deno.readTextFile(sessionIdFile);
+    
+    // Detect project context  
+    const { detectProject } = await import("./project-detector.ts");
+    const projectContext = await detectProject(projectPath);
+    
+    return `claude-code-${projectContext.projectId}-${sessionId.trim()}`;
+  } catch (error) {
+    throw new Error(`Cannot get current thread ID: ${(error as any).message}. Make sure conversation hook is active.`);
+  }
+}
+
+/**
+ * Get memory context for current Claude Code session
+ */
+export async function getCurrentContext(): Promise<ThreadContextResult> {
+  const threadId = await getCurrentThreadId();
+  return await getThreadContext(threadId);
 }
 
 /**
