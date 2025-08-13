@@ -1,0 +1,40 @@
+{
+  "version": "0.1.0",
+  "name": "temporal-bridge",
+  "description": "AI Memory That Learns Across Time - Temporal knowledge graphs for Claude Code",
+  "exports": "./src/lib/types.ts",
+  "tasks": {
+    "dev": "deno run --allow-env --allow-net src/retrieve_memory.ts",
+    "search": "deno run --allow-env --allow-net src/retrieve_memory.ts",
+    "hook": "deno run --allow-env --allow-read --allow-write --allow-net src/hooks/store_conversation.ts",
+    "mcp": "deno run --allow-env --allow-net src/mcp-server.ts",
+    "install": "deno cache src/retrieve_memory.ts src/hooks/store_conversation.ts src/mcp-server.ts",
+    "check": "deno check src/**/*.ts",
+    "fmt": "deno fmt src/",
+    "lint": "deno lint src/"
+  },
+  "imports": {
+    "@getzep/zep-cloud": "npm:@getzep/zep-cloud@3.2.0"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false,
+    "proseWrap": "preserve"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": ["no-unused-vars"]
+    }
+  }
+}

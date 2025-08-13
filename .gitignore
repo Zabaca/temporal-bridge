@@ -1,0 +1,28 @@
+# Environment files
+.env
+.env.local
+
+# Debug files
+*debug*.json
+
+# Deno cache
+.deno/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Runtime files
+*.pid
+*.seed
+*.pid.lock

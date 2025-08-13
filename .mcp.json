@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "zep-docs": {
+      "type": "sse",
+      "url": "https://docs-mcp.getzep.com/sse"
+    },
+    "temporal-bridge": {
+      "type": "stdio",
+      "command": "deno",
+      "args": [
+        "run",
+        "--allow-env",
+        "--allow-net",
+        "src/mcp-server.ts"
+      ],
+      "cwd": "/home/uptown/Projects/zabaca/temporal-bridge",
+      "env": {
+        "ZEP_API_KEY": "${ZEP_API_KEY}"
+      }
+    }
+  }
+}

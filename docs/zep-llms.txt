@@ -1,0 +1,210 @@
+# Zep Documentation
+
+## Docs
+
+- [Welcome to Zep!](https://help.getzep.com/overview.mdx)
+- [Quickstart](https://help.getzep.com/quickstart.mdx): Get up and running with Zep in minutes
+- [Key Concepts](https://help.getzep.com/concepts.mdx): Understanding Zep's context engineering platform and temporal knowledge graphs.
+- [Coding with LLMs](https://help.getzep.com/coding-with-llms.mdx): Integrate Zep's documentation directly into your AI coding workflow using llms.txt and MCP.
+- [Install SDKs](https://help.getzep.com/install-sdks.mdx): Set up your development environment for Zep
+- [Building a Chatbot with Zep](https://help.getzep.com/walkthrough.mdx): Familiarize yourself with Zep and the Zep SDKs, culminating in building a simple chatbot.
+- [Users](https://help.getzep.com/users.mdx)
+- [Threads](https://help.getzep.com/threads.mdx)
+- [Adding Memory](https://help.getzep.com/adding-memory.mdx): Learn how to add chat history and messages to Zep's memory.
+- [Retrieving Memory](https://help.getzep.com/retrieving-memory.mdx): Learn how to retrieve relevant context from a User Graph.
+- [Graph Overview](https://help.getzep.com/graph-overview.mdx)
+- [Zep vs Graph RAG](https://help.getzep.com/docs/building-searchable-graphs/zep-vs-graph-rag.mdx): How Zep compares to traditional GraphRAG approaches
+- [Utilizing Facts and Summaries](https://help.getzep.com/facts.mdx): Facts and summaries are extracted from the chat history as a conversation unfolds as well as from business data added to Zep.
+- [Customizing Graph Structure](https://help.getzep.com/customizing-graph-structure.mdx)
+- [Adding Data to the Graph](https://help.getzep.com/adding-data-to-the-graph.mdx)
+- [Adding batch data](https://help.getzep.com/adding-batch-data.mdx): Efficiently add large amounts of data to your graph
+- [Reading Data from the Graph](https://help.getzep.com/reading-data-from-the-graph.mdx)
+- [Searching the Graph](https://help.getzep.com/searching-the-graph.mdx)
+- [Deleting Data from the Graph](https://help.getzep.com/deleting-data-from-the-graph.mdx)
+- [Debugging](https://help.getzep.com/docs/building-searchable-graphs/debugging.mdx): Debug workflow execution logs for graph operations
+- [Check Data Ingestion Status](https://help.getzep.com/cookbook/check-data-ingestion-status.mdx)
+- [Customize Your Context Block](https://help.getzep.com/cookbook/customize-your-context-block.mdx)
+- [Add User Specific Business Data to User Graphs](https://help.getzep.com/cookbook/how-to-add-user-specific-business-data-to-user-graphs.mdx)
+- [Share Memory Across Users Using Graphs](https://help.getzep.com/cookbook/how-to-share-memory-across-users-using-graphs.mdx)
+- [Get Most Relevant Facts for an Arbitrary Query](https://help.getzep.com/cookbook/how-to-get-most-relevant-facts-for-an-arbitrary-query.mdx)
+- [Find Facts Relevant to a Specific Node](https://help.getzep.com/cookbook/how-to-find-facts-relevant-to-a-specific-node.mdx)
+- [Performance Optimization Guide](https://help.getzep.com/performance.mdx): Best practices for optimizing Zep performance in production
+- [Adding JSON Best Practices](https://help.getzep.com/adding-json-best-practices.mdx): Best practices for preparing JSON data for ingestion into Zep
+- [LangGraph Memory Example](https://help.getzep.com/ecosystem/langgraph-memory.mdx): LangGraph is a library created by LangChain for building stateful, multi-agent applications. This example demonstrates using Zep for LangGraph agent memory.
+- [Autogen Memory Integration](https://help.getzep.com/ecosystem/autogen-memory.mdx): Add persistent memory to Microsoft Autogen agents using the zep-autogen package.
+- [Building Multi-Agent Systems with CrewAI and Zep](https://help.getzep.com/ecosystem/crewai.mdx): Learn how to create CrewAI agents with persistent memory powered by Zep's context engineering platform
+- [Zep v2 to v3 migration](https://help.getzep.com/zep-v2-to-v3-migration.mdx): Complete guide for upgrading from v2 to v3
+- [Mem0 Migration](https://help.getzep.com/mem0-to-zep.mdx): How to migrate from Mem0 to Zep
+- [FAQ](https://help.getzep.com/faq.mdx)
+- [Welcome to Graphiti!](https://help.getzep.com/graphiti/getting-started/welcome.mdx)
+- [Overview](https://help.getzep.com/graphiti/getting-started/overview.mdx): Temporal Knowledge Graphs for Agentic Applications
+- [Quick Start](https://help.getzep.com/graphiti/getting-started/quick-start.mdx): Getting started with Graphiti
+- [Knowledge Graph MCP Server](https://help.getzep.com/graphiti/getting-started/mcp-server.mdx): A Knowledge Graph MCP Server for AI Assistants
+- [LLM Configuration](https://help.getzep.com/graphiti/configuration/llm-configuration.mdx): Configure Graphiti with different LLM providers
+- [Graph Database Configuration](https://help.getzep.com/graphiti/configuration/graph-db-configuration.mdx): Configure Neo4j and FalkorDB for Graphiti
+- [Adding Episodes](https://help.getzep.com/graphiti/core-concepts/adding-episodes.mdx): How to add data to your Graphiti graph
+- [Custom Entity and Edge Types](https://help.getzep.com/graphiti/core-concepts/custom-entity-and-edge-types.mdx): Enhancing Graphiti with Custom Ontologies
+- [Communities](https://help.getzep.com/graphiti/core-concepts/communities.mdx): How to create and update communities
+- [Graph Namespacing](https://help.getzep.com/graphiti/core-concepts/graph-namespacing.mdx): Using group_ids to create isolated graph namespaces
+- [Searching the Graph](https://help.getzep.com/graphiti/working-with-data/searching.mdx): How to retrieve information from your Graphiti graph
+- [CRUD Operations](https://help.getzep.com/graphiti/working-with-data/crud-operations.mdx): How to access and modify Nodes and Edges
+- [Adding Fact Triples](https://help.getzep.com/graphiti/working-with-data/adding-fact-triples.mdx): How to add fact triples to your Graphiti graph
+- [Using LangGraph and Graphiti](https://help.getzep.com/graphiti/integrations/lang-graph-agent.mdx): Building an agent with LangChain's LangGraph and Graphiti
+- [Telemetry](https://help.getzep.com/graphiti/other/telemetry.mdx)
+- [Welcome to Zep!](https://help.getzep.com/v2/welcome.mdx)
+- [Coding with LLMs](https://help.getzep.com/coding-with-llms.mdx): Integrate Zep's documentation directly into your AI coding workflow using llms.txt and MCP.
+- [Key Concepts](https://help.getzep.com/concepts.mdx): Understanding Zep's context engineering platform and temporal knowledge graphs.
+- [Quickstart](https://help.getzep.com/quickstart.mdx): Get up and running with Zep in minutes
+- [Building a Chatbot with Zep](https://help.getzep.com/v2/walkthrough.mdx): Familiarize yourself with Zep and the Zep SDKs, culminating in building a simple chatbot.
+- [Memory](https://help.getzep.com/v2/memory.mdx): Learn how to use the Memory API to store and retrieve memory.
+- [Projects](https://help.getzep.com/v2/projects.mdx)
+- [Users](https://help.getzep.com/v2/users.mdx)
+- [Sessions](https://help.getzep.com/v2/sessions.mdx)
+- [Groups](https://help.getzep.com/v2/groups.mdx): Group graphs can be used to create and manage additional non-user specific graphs.
+- [Understanding the Graph](https://help.getzep.com/v2/understanding-the-graph.mdx)
+- [Utilizing Facts and Summaries](https://help.getzep.com/v2/facts.mdx): Facts and summaries are extracted from the chat history as a conversation unfolds as well as from business data added to Zep.
+- [Customizing Graph Structure](https://help.getzep.com/v2/customizing-graph-structure.mdx)
+- [Adding Data to the Graph](https://help.getzep.com/v2/adding-data-to-the-graph.mdx)
+- [Reading Data from the Graph](https://help.getzep.com/v2/reading-data-from-the-graph.mdx)
+- [Searching the Graph](https://help.getzep.com/v2/searching-the-graph.mdx)
+- [Deleting Data from the Graph](https://help.getzep.com/v2/deleting-data-from-the-graph.mdx)
+- [Debugging](https://help.getzep.com/v2/docs/working-with-the-graph/debugging.mdx): Debug workflow execution logs for graph operations
+- [Check Data Ingestion Status](https://help.getzep.com/cookbook/check-data-ingestion-status.mdx)
+- [Customize Your Context String](https://help.getzep.com/v2/cookbook/customize-your-memory-context-string.mdx)
+- [Add User Specific Business Data to User Graphs](https://help.getzep.com/cookbook/how-to-add-user-specific-business-data-to-user-graphs.mdx)
+- [Share Memory Across Users Using Group Graphs](https://help.getzep.com/v2/cookbook/how-to-share-memory-across-users-using-group-graphs.mdx)
+- [Get Most Relevant Facts for an Arbitrary Query](https://help.getzep.com/cookbook/how-to-get-most-relevant-facts-for-an-arbitrary-query.mdx)
+- [Find Facts Relevant to a Specific Node](https://help.getzep.com/cookbook/how-to-find-facts-relevant-to-a-specific-node.mdx)
+- [Performance Optimization Guide](https://help.getzep.com/performance.mdx): Best practices for optimizing Zep performance in production
+- [Adding JSON Best Practices](https://help.getzep.com/adding-json-best-practices.mdx): Best practices for preparing JSON data for ingestion into Zep
+- [LangGraph Memory Example](https://help.getzep.com/ecosystem/langgraph-memory.mdx): LangGraph is a library created by LangChain for building stateful, multi-agent applications. This example demonstrates using Zep for LangGraph agent memory.
+- [Autogen Memory Example](https://help.getzep.com/ecosystem/autogen-memory.mdx): Autogen is a library created by Microsoft for building multi-agent applications. This example demonstrates using Zep for Autogen long-term memory.
+- [Zep v2 to v3 migration](https://help.getzep.com/zep-v2-to-v3-migration.mdx): Complete guide for upgrading from v2 to v3
+- [Mem0 Migration](https://help.getzep.com/mem0-to-zep.mdx): How to migrate from Mem0 to Zep
+- [FAQ](https://help.getzep.com/faq.mdx)
+- [Welcome to Graphiti!](https://help.getzep.com/graphiti/getting-started/welcome.mdx)
+- [Overview](https://help.getzep.com/graphiti/getting-started/overview.mdx): Temporal Knowledge Graphs for Agentic Applications
+- [Quick Start](https://help.getzep.com/graphiti/getting-started/quick-start.mdx): Getting started with Graphiti
+- [Knowledge Graph MCP Server](https://help.getzep.com/graphiti/getting-started/mcp-server.mdx): A Knowledge Graph MCP Server for AI Assistants
+- [LLM Configuration](https://help.getzep.com/graphiti/configuration/llm-configuration.mdx): Configure Graphiti with different LLM providers
+- [Graph Database Configuration](https://help.getzep.com/graphiti/configuration/graph-db-configuration.mdx): Configure Neo4j and FalkorDB for Graphiti
+- [Adding Episodes](https://help.getzep.com/graphiti/core-concepts/adding-episodes.mdx): How to add data to your Graphiti graph
+- [Custom Entity and Edge Types](https://help.getzep.com/graphiti/core-concepts/custom-entity-and-edge-types.mdx): Enhancing Graphiti with Custom Ontologies
+- [Communities](https://help.getzep.com/graphiti/core-concepts/communities.mdx): How to create and update communities
+- [Graph Namespacing](https://help.getzep.com/graphiti/core-concepts/graph-namespacing.mdx): Using group_ids to create isolated graph namespaces
+- [Searching the Graph](https://help.getzep.com/graphiti/working-with-data/searching.mdx): How to retrieve information from your Graphiti graph
+- [CRUD Operations](https://help.getzep.com/graphiti/working-with-data/crud-operations.mdx): How to access and modify Nodes and Edges
+- [Adding Fact Triples](https://help.getzep.com/graphiti/working-with-data/adding-fact-triples.mdx): How to add fact triples to your Graphiti graph
+- [Using LangGraph and Graphiti](https://help.getzep.com/graphiti/integrations/lang-graph-agent.mdx): Building an agent with LangChain's LangGraph and Graphiti
+- [Telemetry](https://help.getzep.com/graphiti/other/telemetry.mdx)
+
+## API Docs
+
+- SDK Reference > Thread [Get threads](https://help.getzep.com/sdk-reference/thread/list-all.mdx)
+- SDK Reference > Thread [Start a new thread.](https://help.getzep.com/sdk-reference/thread/create.mdx)
+- SDK Reference > Thread [Delete thread](https://help.getzep.com/sdk-reference/thread/delete.mdx)
+- SDK Reference > Thread [Get thread memory context](https://help.getzep.com/sdk-reference/thread/get-user-context.mdx)
+- SDK Reference > Thread [Get Messages for Thread](https://help.getzep.com/sdk-reference/thread/get.mdx)
+- SDK Reference > Thread [Add messages to a thread](https://help.getzep.com/sdk-reference/thread/add-messages.mdx)
+- SDK Reference > User [Add User](https://help.getzep.com/sdk-reference/user/add.mdx)
+- SDK Reference > User [Get Users](https://help.getzep.com/sdk-reference/user/list-ordered.mdx)
+- SDK Reference > User [Get User](https://help.getzep.com/sdk-reference/user/get.mdx)
+- SDK Reference > User [Delete User](https://help.getzep.com/sdk-reference/user/delete.mdx)
+- SDK Reference > User [Update User](https://help.getzep.com/sdk-reference/user/update.mdx)
+- SDK Reference > User [Get User Node](https://help.getzep.com/sdk-reference/user/get-node.mdx)
+- SDK Reference > User [Get User Threads](https://help.getzep.com/sdk-reference/user/get-threads.mdx)
+- SDK Reference > Graph [Get Entity Types](https://help.getzep.com/sdk-reference/graph/list-entity-types.mdx)
+- SDK Reference > Graph [Set Entity Types](https://help.getzep.com/sdk-reference/graph/set-entity-types-internal.mdx)
+- SDK Reference > Graph [Add Data](https://help.getzep.com/sdk-reference/graph/add.mdx)
+- SDK Reference > Graph [Add Data in batch mode](https://help.getzep.com/sdk-reference/graph/add-batch.mdx)
+- SDK Reference > Graph [Add Fact Triple](https://help.getzep.com/sdk-reference/graph/add-fact-triple.mdx)
+- SDK Reference > Graph [Clone graph](https://help.getzep.com/sdk-reference/graph/clone.mdx)
+- SDK Reference > Graph [Create Graph](https://help.getzep.com/sdk-reference/graph/create.mdx)
+- SDK Reference > Graph [List all graphs](https://help.getzep.com/sdk-reference/graph/list-all.mdx)
+- SDK Reference > Graph [Search Graph](https://help.getzep.com/sdk-reference/graph/search.mdx)
+- SDK Reference > Graph [Get Graph](https://help.getzep.com/sdk-reference/graph/get.mdx)
+- SDK Reference > Graph [Delete Graph](https://help.getzep.com/sdk-reference/graph/delete.mdx)
+- SDK Reference > Graph [Update Graph](https://help.getzep.com/sdk-reference/graph/update.mdx)
+- SDK Reference > Graph > Edge [Get Graph Edges](https://help.getzep.com/sdk-reference/graph/edge/get-by-graph-id.mdx)
+- SDK Reference > Graph > Edge [Get User Edges](https://help.getzep.com/sdk-reference/graph/edge/get-by-user-id.mdx)
+- SDK Reference > Graph > Edge [Get Edge](https://help.getzep.com/sdk-reference/graph/edge/get.mdx)
+- SDK Reference > Graph > Edge [Delete Edge](https://help.getzep.com/sdk-reference/graph/edge/delete.mdx)
+- SDK Reference > Graph > Episode [Get Graph Episodes](https://help.getzep.com/sdk-reference/graph/episode/get-by-graph-id.mdx)
+- SDK Reference > Graph > Episode [Get User Episodes](https://help.getzep.com/sdk-reference/graph/episode/get-by-user-id.mdx)
+- SDK Reference > Graph > Episode [Get Episode](https://help.getzep.com/sdk-reference/graph/episode/get.mdx)
+- SDK Reference > Graph > Episode [Delete Episode](https://help.getzep.com/sdk-reference/graph/episode/delete.mdx)
+- SDK Reference > Graph > Episode [Return any nodes and edges mentioned in an episode](https://help.getzep.com/sdk-reference/graph/episode/get-nodes-and-edges.mdx)
+- SDK Reference > Graph > Node [Get Graph Nodes](https://help.getzep.com/sdk-reference/graph/node/get-by-graph-id.mdx)
+- SDK Reference > Graph > Node [Get User Nodes](https://help.getzep.com/sdk-reference/graph/node/get-by-user-id.mdx)
+- SDK Reference > Graph > Node [Get Entity Edges for a node](https://help.getzep.com/sdk-reference/graph/node/get-edges.mdx)
+- SDK Reference > Graph > Node [Get Episodes for a node](https://help.getzep.com/sdk-reference/graph/node/get-episodes.mdx)
+- SDK Reference > Graph > Node [Get Node](https://help.getzep.com/sdk-reference/graph/node/get.mdx)
+- SDK Reference > Memory [Add Session](https://help.getzep.com/v2/sdk-reference/memory/add-session.mdx)
+- SDK Reference > Memory [Get Session.](https://help.getzep.com/v2/sdk-reference/memory/get-session.mdx)
+- SDK Reference > Memory [Get Sessions](https://help.getzep.com/v2/sdk-reference/memory/list-sessions.mdx)
+- SDK Reference > Memory [Get Session Memory](https://help.getzep.com/v2/sdk-reference/memory/get.mdx)
+- SDK Reference > Memory [Get Messages for Session](https://help.getzep.com/v2/sdk-reference/memory/get-session-messages.mdx)
+- SDK Reference > Memory [Add Memory to Session](https://help.getzep.com/v2/sdk-reference/memory/add.mdx)
+- SDK Reference > Memory [Delete Session](https://help.getzep.com/v2/sdk-reference/memory/delete.mdx)
+- SDK Reference > User [Add User](https://help.getzep.com/sdk-reference/user/add.mdx)
+- SDK Reference > User [Get Users](https://help.getzep.com/sdk-reference/user/list-ordered.mdx)
+- SDK Reference > User [Get User](https://help.getzep.com/sdk-reference/user/get.mdx)
+- SDK Reference > User [Delete User](https://help.getzep.com/sdk-reference/user/delete.mdx)
+- SDK Reference > User [Update User](https://help.getzep.com/sdk-reference/user/update.mdx)
+- SDK Reference > User [Get User Node](https://help.getzep.com/sdk-reference/user/get-node.mdx)
+- SDK Reference > User [Get User Sessions](https://help.getzep.com/v2/sdk-reference/user/get-sessions.mdx)
+- SDK Reference > Group [Create Group](https://help.getzep.com/v2/sdk-reference/group/add.mdx)
+- SDK Reference > Group [Get All Groups](https://help.getzep.com/v2/sdk-reference/group/get-all-groups.mdx)
+- SDK Reference > Group [Get Group](https://help.getzep.com/v2/sdk-reference/group/get-group.mdx)
+- SDK Reference > Group [Delete Group](https://help.getzep.com/v2/sdk-reference/group/delete.mdx)
+- SDK Reference > Group [Update Group](https://help.getzep.com/v2/sdk-reference/group/update.mdx)
+- SDK Reference > Graph [Get Entity Types](https://help.getzep.com/sdk-reference/graph/list-entity-types.mdx)
+- SDK Reference > Graph [Set Entity Types](https://help.getzep.com/sdk-reference/graph/set-entity-types-internal.mdx)
+- SDK Reference > Graph [Add Data](https://help.getzep.com/sdk-reference/graph/add.mdx)
+- SDK Reference > Graph [Add Data in batch mode](https://help.getzep.com/sdk-reference/graph/add-batch.mdx)
+- SDK Reference > Graph [Add Fact Triple](https://help.getzep.com/sdk-reference/graph/add-fact-triple.mdx)
+- SDK Reference > Graph [Clone graph](https://help.getzep.com/sdk-reference/graph/clone.mdx)
+- SDK Reference > Graph [Search Graph](https://help.getzep.com/sdk-reference/graph/search.mdx)
+- SDK Reference > Graph > Edge [Get Group Edges](https://help.getzep.com/v2/sdk-reference/graph/edge/get-by-group-id.mdx)
+- SDK Reference > Graph > Edge [Get User Edges](https://help.getzep.com/sdk-reference/graph/edge/get-by-user-id.mdx)
+- SDK Reference > Graph > Edge [Get Edge](https://help.getzep.com/sdk-reference/graph/edge/get.mdx)
+- SDK Reference > Graph > Edge [Delete Edge](https://help.getzep.com/sdk-reference/graph/edge/delete.mdx)
+- SDK Reference > Graph > Episode [Get Group Episodes](https://help.getzep.com/v2/sdk-reference/graph/episode/get-by-group-id.mdx)
+- SDK Reference > Graph > Episode [Get User Episodes](https://help.getzep.com/sdk-reference/graph/episode/get-by-user-id.mdx)
+- SDK Reference > Graph > Episode [Get Episode](https://help.getzep.com/sdk-reference/graph/episode/get.mdx)
+- SDK Reference > Graph > Episode [Delete Episode](https://help.getzep.com/sdk-reference/graph/episode/delete.mdx)
+- SDK Reference > Graph > Episode [Return any nodes and edges mentioned in an episode](https://help.getzep.com/sdk-reference/graph/episode/get-nodes-and-edges.mdx)
+- SDK Reference > Graph > Node [Get Group Nodes](https://help.getzep.com/v2/sdk-reference/graph/node/get-by-group-id.mdx)
+- SDK Reference > Graph > Node [Get User Nodes](https://help.getzep.com/sdk-reference/graph/node/get-by-user-id.mdx)
+- SDK Reference > Graph > Node [Get Entity Edges for a node](https://help.getzep.com/sdk-reference/graph/node/get-edges.mdx)
+- SDK Reference > Graph > Node [Get Episodes for a node](https://help.getzep.com/sdk-reference/graph/node/get-episodes.mdx)
+- SDK Reference > Graph > Node [Get Node](https://help.getzep.com/sdk-reference/graph/node/get.mdx)
+- SDK Reference > Deprecated > Memory [Returns a fact by UUID](https://help.getzep.com/v2/sdk-reference/deprecated/memory/get-fact.mdx)
+- SDK Reference > Deprecated > Memory [Delete a fact for the given UUID](https://help.getzep.com/v2/sdk-reference/deprecated/memory/delete-fact.mdx)
+- SDK Reference > Deprecated > Memory [End multiple sessions.](https://help.getzep.com/v2/sdk-reference/deprecated/memory/end-sessions.mdx)
+- SDK Reference > Deprecated > Memory [Search sessions for the specified query.](https://help.getzep.com/v2/sdk-reference/deprecated/memory/search-sessions.mdx)
+- SDK Reference > Deprecated > Memory [Update a session.](https://help.getzep.com/v2/sdk-reference/deprecated/memory/update-session.mdx)
+- SDK Reference > Deprecated > Memory [Deprecated: Classify Session](https://help.getzep.com/v2/sdk-reference/deprecated/memory/classify-session.mdx)
+- SDK Reference > Deprecated > Memory [End a session](https://help.getzep.com/v2/sdk-reference/deprecated/memory/end-session.mdx)
+- SDK Reference > Deprecated > Memory [Returns all facts for a session by ID](https://help.getzep.com/v2/sdk-reference/deprecated/memory/get-session-facts.mdx)
+- SDK Reference > Deprecated > Memory [Adds facts to a session](https://help.getzep.com/v2/sdk-reference/deprecated/memory/add-session-facts.mdx)
+- SDK Reference > Deprecated > Memory [Get Message](https://help.getzep.com/v2/sdk-reference/deprecated/memory/get-session-message.mdx)
+- SDK Reference > Deprecated > Memory [Updates the metadata of a message.](https://help.getzep.com/v2/sdk-reference/deprecated/memory/update-message-metadata.mdx)
+- SDK Reference > Deprecated > Memory [Deprecated: Use search_sessions method instead](https://help.getzep.com/v2/sdk-reference/deprecated/memory/search.mdx)
+- SDK Reference > Deprecated > Memory [Returns a session's summaries by ID](https://help.getzep.com/v2/sdk-reference/deprecated/memory/get-summaries.mdx)
+- SDK Reference > Deprecated > Memory [Synthesize a question](https://help.getzep.com/v2/sdk-reference/deprecated/memory/synthesize-question.mdx)
+- SDK Reference > Deprecated > User [Get user facts.](https://help.getzep.com/v2/sdk-reference/deprecated/user/get-facts.mdx)
+- SDK Reference > Deprecated > Group [Get Group Facts](https://help.getzep.com/v2/sdk-reference/deprecated/group/get-facts.mdx)
+- SDK Reference > Deprecated > Document [Gets a list of DocumentCollections](https://help.getzep.com/v2/sdk-reference/deprecated/document/list-collections.mdx)
+- SDK Reference > Deprecated > Document [Gets a DocumentCollection](https://help.getzep.com/v2/sdk-reference/deprecated/document/get-collection.mdx)
+- SDK Reference > Deprecated > Document [Creates a new DocumentCollection](https://help.getzep.com/v2/sdk-reference/deprecated/document/add-collection.mdx)
+- SDK Reference > Deprecated > Document [Deletes a DocumentCollection](https://help.getzep.com/v2/sdk-reference/deprecated/document/delete-collection.mdx)
+- SDK Reference > Deprecated > Document [Updates a DocumentCollection](https://help.getzep.com/v2/sdk-reference/deprecated/document/update-collection.mdx)
+- SDK Reference > Deprecated > Document [Creates Multiple Documents in a DocumentCollection](https://help.getzep.com/v2/sdk-reference/deprecated/document/add-documents.mdx)
+- SDK Reference > Deprecated > Document [Batch Deletes Documents from a DocumentCollection by UUID](https://help.getzep.com/v2/sdk-reference/deprecated/document/batch-delete-documents.mdx)
+- SDK Reference > Deprecated > Document [Batch Gets Documents from a DocumentCollection](https://help.getzep.com/v2/sdk-reference/deprecated/document/batch-get-documents.mdx)
+- SDK Reference > Deprecated > Document [Batch Updates Documents in a DocumentCollection](https://help.getzep.com/v2/sdk-reference/deprecated/document/batch-update-documents.mdx)
+- SDK Reference > Deprecated > Document [Gets a Document from a DocumentCollection by UUID](https://help.getzep.com/v2/sdk-reference/deprecated/document/gets-a-document-from-a-document-collection-by-uuid.mdx)
+- SDK Reference > Deprecated > Document [Delete Document from a DocumentCollection by UUID](https://help.getzep.com/v2/sdk-reference/deprecated/document/delete-document.mdx)
+- SDK Reference > Deprecated > Document [Updates a Document](https://help.getzep.com/v2/sdk-reference/deprecated/document/updates-a-document.mdx)
+- SDK Reference > Deprecated > Document [Searches Documents in a DocumentCollection](https://help.getzep.com/v2/sdk-reference/deprecated/document/search.mdx)
