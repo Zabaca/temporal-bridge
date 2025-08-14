@@ -120,6 +120,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
         },
       },
+      {
+        name: "get_current_context",
+        description: "Get memory context for current Claude Code session",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -134,7 +142,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     // Import memory tools dynamically to avoid circular imports
-    const { searchFacts, searchMemory, getThreadContext, getRecentEpisodes } = await import("./lib/memory-tools.ts");
+    const { searchFacts, searchMemory, getThreadContext, getRecentEpisodes, getCurrentContext } = await import("./lib/memory-tools.ts");
 
     switch (name) {
       case "search_facts":
@@ -187,6 +195,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: JSON.stringify(episodes, null, 2),
+            },
+          ],
+        };
+
+      case "get_current_context":
+        const currentContext = await getCurrentContext();
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(currentContext, null, 2),
             },
           ],
         };

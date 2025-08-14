@@ -26,3 +26,5 @@ Thumbs.db
 *.pid
 *.seed
 *.pid.lock
+
+.claude-session-id

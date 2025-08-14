@@ -22,11 +22,49 @@ export function createZepClient(config?: Partial<ZepConfig>): ZepClient {
 
 /**
  * Get default configuration for Zep operations
+ * Uses project-specific user ID for memory isolation
  */
 export function getDefaultConfig(): ZepConfig {
+  const baseUserId = "developer";
+  const projectDir = Deno.env.get("PROJECT_DIR") || Deno.cwd();
+  
+  // For project-aware memory isolation
+  let userId = baseUserId;
+  try {
+    // Create a simple project identifier from PROJECT_DIR
+    const projectPath = projectDir.replace(/\/+$/, ''); // Remove trailing slashes
+    const pathParts = projectPath.split('/');
+    
+    // Look for Projects/org/repo pattern or use last two directories
+    const projectsIndex = pathParts.findIndex(part => part.toLowerCase() === 'projects');
+    let projectId: string;
+    
+    if (projectsIndex >= 0 && pathParts.length > projectsIndex + 2) {
+      // Projects/org/repo pattern
+      const org = pathParts[projectsIndex + 1];
+      const repo = pathParts[projectsIndex + 2];
+      projectId = `${org}-${repo}`;
+    } else {
+      // Use last two path components as fallback
+      const lastTwo = pathParts.slice(-2).join('-');
+      projectId = lastTwo || 'default';
+    }
+    
+    // Sanitize project ID
+    projectId = projectId.toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    
+    userId = `${baseUserId}-${projectId}`;
+  } catch (error) {
+    // Fallback to base user ID if detection fails
+    console.error("Warning: Could not detect project context, using default user ID:", error);
+  }
+  
   return {
     apiKey: Deno.env.get("ZEP_API_KEY") || "",
-    userId: "developer",
+    userId,
     defaultLimit: 10,
     defaultScope: "edges"
   };

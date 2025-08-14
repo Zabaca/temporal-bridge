@@ -7,6 +7,7 @@
 
 import type { HookData, TranscriptMessage, ParsedMessage } from "../lib/types.ts";
 import { createZepClient, ensureUser, ensureThread } from "../lib/zep-client.ts";
+import { detectProject, getScopedUserId } from "../lib/project-detector.ts";
 
 function findCurrentTransaction(parsedMessages: ParsedMessage[], rawMessages: TranscriptMessage[]): ParsedMessage[] {
   if (parsedMessages.length === 0) return [];
@@ -136,9 +137,10 @@ async function storeConversation(hookData: HookData): Promise<void> {
     }
   }
 
-  // Create or get thread ID based on session
-  const userId = "developer";
-  const threadId = `claude-code-${hookData.session_id}`;
+  // Detect project context from working directory
+  const projectContext = await detectProject(hookData.cwd);
+  const userId = getScopedUserId("developer", projectContext);
+  const threadId = `claude-code-${projectContext.projectId}-${hookData.session_id}`;
 
   // Ensure user and thread exist
   await ensureUser(client, userId);
@@ -153,12 +155,23 @@ async function storeConversation(hookData: HookData): Promise<void> {
     }
   }).filter(msg => msg !== null));
 
+  // Write current session ID to project directory for current thread detection
+  try {
+    const sessionIdFile = `${projectContext.projectPath}/.claude-session-id`;
+    await Deno.writeTextFile(sessionIdFile, hookData.session_id);
+  } catch (sessionError) {
+    console.error(`❌ Failed to write session ID file:`, sessionError);
+  }
+
   // DEBUG: Write parsed messages to debug file
   const debugFile = `/home/uptown/.claude/temporal-bridge-debug-${hookData.session_id}.json`;
   const debugData = {
     timestamp: new Date().toISOString(),
     session_id: hookData.session_id,
     hook_event: hookData.hook_event_name,
+    project_context: projectContext,
+    scoped_user_id: userId,
+    scoped_thread_id: threadId,
     total_messages_parsed: messages.length,
     current_transaction_messages: transactionMessages.length,
     all_messages: messages,
