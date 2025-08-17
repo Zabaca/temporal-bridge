@@ -163,9 +163,15 @@ deno run --allow-env --allow-net src/retrieve_memory.ts --help
 
 TemporalBridge was built to bridge conversations across time. Contributions that enhance temporal memory, search capabilities, or integration features are welcome.
 
-## 📄 License
+## License
 
-Part of the uptownhr project ecosystem.
+AGPL-3.0 License - see [LICENSE](LICENSE) file for details.
+
+### Commercial Licensing
+
+Temporal Bridge is available under the GNU Affero General Public License v3.0 (AGPLv3). This license requires that if you modify Temporal Bridge and offer it as a network service, you must provide the complete source code of your modifications to users.
+
+For organizations that want to use Temporal Bridge in proprietary applications or offer it as a managed service without open-sourcing their modifications, commercial licenses are available. Contact us for commercial licensing options.
 
 ---
 
