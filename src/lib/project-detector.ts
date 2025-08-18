@@ -111,7 +111,7 @@ function parsePathStructure(projectPath: string): { organization?: string; name:
   if (projectsIndex >= 0 && parts.length > projectsIndex + 2) {
     return {
       organization: parts[projectsIndex + 1],
-      name: parts[projectsIndex + 2]
+      name: parts[projectsIndex + 2] || pathName
     };
   }
   
@@ -120,7 +120,7 @@ function parsePathStructure(projectPath: string): { organization?: string; name:
   if (githubIndex >= 0 && parts.length > githubIndex + 2) {
     return {
       organization: parts[githubIndex + 1],
-      name: parts[githubIndex + 2]
+      name: parts[githubIndex + 2] || pathName
     };
   }
   

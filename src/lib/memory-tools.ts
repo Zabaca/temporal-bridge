@@ -3,7 +3,7 @@
  * Structured functions for memory search and retrieval via MCP
  */
 
-import { createZepClient, getDefaultConfig } from "./zep-client.ts";
+import { createZepClient, getDefaultConfig, getDefaultConfigAsync } from "./zep-client.ts";
 import type { MemoryResult } from "./types.ts";
 
 export interface FactResult {
@@ -44,7 +44,7 @@ export async function searchFacts(
   minRating?: number,
   reranker: 'cross_encoder' | 'none' = 'cross_encoder'
 ): Promise<FactResult[]> {
-  const config = getDefaultConfig();
+  const config = await getDefaultConfigAsync();
   const client = createZepClient();
   
   try {
@@ -85,7 +85,7 @@ export async function searchMemory(
   limit = 5,
   reranker: 'cross_encoder' | 'none' = 'cross_encoder'
 ): Promise<MemorySearchResult[]> {
-  const config = getDefaultConfig();
+  const config = await getDefaultConfigAsync();
   const client = createZepClient();
   
   try {
@@ -168,7 +168,7 @@ export async function getThreadContext(
   threadId: string, 
   minRating?: number
 ): Promise<ThreadContextResult> {
-  const config = getDefaultConfig();
+  const config = await getDefaultConfigAsync();
   const client = createZepClient();
   
   try {
@@ -199,9 +199,26 @@ export async function getThreadContext(
       user_id: config.userId || "developer"
     };
   } catch (error) {
-    console.error("Get thread context error:", error);
+    const errorMsg = (error as any).message || String(error);
+    console.error("[DEBUG] getThreadContext error:", {
+      error: errorMsg,
+      threadId,
+      userId: config.userId,
+      statusCode: (error as any).status || (error as any).statusCode
+    });
+    
+    // Handle 404 - thread doesn't exist yet
+    if (errorMsg.includes("404") || errorMsg.includes("NotFoundError") || errorMsg.includes("not found")) {
+      return {
+        context_summary: `Thread ${threadId} not found - likely a new conversation that hasn't been stored yet.`,
+        facts: [],
+        thread_id: threadId,
+        user_id: config.userId || "developer"
+      };
+    }
+    
     return {
-      context_summary: `Error retrieving context: ${(error as any).message}`,
+      context_summary: `Error retrieving context: ${errorMsg}`,
       facts: [],
       thread_id: threadId,
       user_id: config.userId || "developer"
@@ -213,7 +230,7 @@ export async function getThreadContext(
  * Get recent episodes for context building
  */
 export async function getRecentEpisodes(limit = 10): Promise<MemorySearchResult[]> {
-  const config = getDefaultConfig();
+  const config = await getDefaultConfigAsync();
   const client = createZepClient();
   
   try {
@@ -302,8 +319,38 @@ export async function getCurrentThreadId(): Promise<string> {
  * Get memory context for current Claude Code session
  */
 export async function getCurrentContext(): Promise<ThreadContextResult> {
-  const threadId = await getCurrentThreadId();
-  return await getThreadContext(threadId);
+  try {
+    const config = await getDefaultConfigAsync();
+    const projectPath = Deno.env.get("PROJECT_DIR") || Deno.cwd();
+    
+    // Debug logging
+    console.error("[DEBUG] getCurrentContext:", {
+      userId: config.userId,
+      projectPath,
+      cwd: Deno.cwd(),
+      env_PROJECT_DIR: Deno.env.get("PROJECT_DIR")
+    });
+    
+    const threadId = await getCurrentThreadId();
+    console.error("[DEBUG] Thread ID:", threadId);
+    
+    return await getThreadContext(threadId);
+  } catch (error) {
+    const errorMsg = (error as any).message || String(error);
+    console.error("[DEBUG] getCurrentContext error:", errorMsg);
+    
+    // Return graceful error for new threads or missing sessions
+    if (errorMsg.includes("Cannot get current thread ID") || errorMsg.includes("No such file")) {
+      return {
+        context_summary: "No conversation context yet - this appears to be a new session.",
+        facts: [],
+        thread_id: "new-session",
+        user_id: (await getDefaultConfigAsync()).userId || "developer"
+      };
+    }
+    
+    throw error;
+  }
 }
 
 /**

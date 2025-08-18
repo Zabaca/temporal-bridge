@@ -60,6 +60,7 @@ deno task search --thread "claude-code-f381f5fb-b0dd-4e66-8e82-5764e505579c"
 - **Trigger**: `cd ~/Projects/zabaca/temporal-bridge && deno task hook`
 - **Storage**: Short messages → thread, Large messages → graph
 - **Debug Files**: `/home/uptown/.claude/temporal-bridge-debug-*.json`
+- **Project Detection**: Uses `project-detector.ts` for consistent user ID generation
 
 ### MCP Server Integration
 - **Status**: ✅ Configured for direct memory access
@@ -131,7 +132,7 @@ deno task mcp  # Start MCP server manually
 - CLI search returns max 300 chars (see `retrieve_memory.ts:287`)
 - Hook debug logging creates files in `.claude/` directory
 - Some API responses use `any` types for Zep SDK compatibility
-- MCP server requires project-specific configuration
+- Legacy user IDs may require `ZEP_USER_ID` override in `.mcp.json`
 
 ## Enhanced Capabilities
 - ✅ Direct memory tool access via MCP

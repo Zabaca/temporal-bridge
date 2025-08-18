@@ -5,6 +5,11 @@
 
 import { ZepClient } from "npm:@getzep/zep-cloud@3.2.0";
 import type { ZepConfig } from "./types.ts";
+import { detectProject, getScopedUserId, type ProjectContext } from "./project-detector.ts";
+
+// Cache for project context to avoid repeated file reads
+let cachedProjectContext: ProjectContext | null = null;
+let cacheKey: string | null = null;
 
 /**
  * Initialize Zep client with configuration
@@ -21,46 +26,84 @@ export function createZepClient(config?: Partial<ZepConfig>): ZepClient {
 }
 
 /**
+ * Get cached project context or detect it
+ */
+async function getCachedProjectContext(): Promise<ProjectContext> {
+  const projectDir = Deno.env.get("PROJECT_DIR") || Deno.cwd();
+  
+  // Check if cache is valid
+  if (cachedProjectContext && cacheKey === projectDir) {
+    return cachedProjectContext;
+  }
+  
+  // Detect and cache new context
+  cachedProjectContext = await detectProject(projectDir);
+  cacheKey = projectDir;
+  return cachedProjectContext;
+}
+
+/**
  * Get default configuration for Zep operations
  * Uses project-specific user ID for memory isolation
+ * 
+ * NOTE: This function is synchronous for backward compatibility.
+ * For accurate project detection, use getDefaultConfigAsync() instead.
  */
 export function getDefaultConfig(): ZepConfig {
   const baseUserId = "developer";
-  const projectDir = Deno.env.get("PROJECT_DIR") || Deno.cwd();
   
-  // For project-aware memory isolation
-  let userId = baseUserId;
-  try {
-    // Create a simple project identifier from PROJECT_DIR
-    const projectPath = projectDir.replace(/\/+$/, ''); // Remove trailing slashes
-    const pathParts = projectPath.split('/');
-    
-    // Look for Projects/org/repo pattern or use last two directories
-    const projectsIndex = pathParts.findIndex(part => part.toLowerCase() === 'projects');
-    let projectId: string;
-    
-    if (projectsIndex >= 0 && pathParts.length > projectsIndex + 2) {
-      // Projects/org/repo pattern
-      const org = pathParts[projectsIndex + 1];
-      const repo = pathParts[projectsIndex + 2];
-      projectId = `${org}-${repo}`;
-    } else {
-      // Use last two path components as fallback
-      const lastTwo = pathParts.slice(-2).join('-');
-      projectId = lastTwo || 'default';
-    }
-    
-    // Sanitize project ID
-    projectId = projectId.toLowerCase()
-      .replace(/[^a-z0-9-]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-    
-    userId = `${baseUserId}-${projectId}`;
-  } catch (error) {
-    // Fallback to base user ID if detection fails
-    console.error("Warning: Could not detect project context, using default user ID:", error);
+  // Check for explicit user ID override first
+  const explicitUserId = Deno.env.get("ZEP_USER_ID");
+  if (explicitUserId) {
+    return {
+      apiKey: Deno.env.get("ZEP_API_KEY") || "",
+      userId: explicitUserId,
+      defaultLimit: 10,
+      defaultScope: "edges"
+    };
   }
+  
+  // For synchronous compatibility, use the cached context if available
+  let userId = baseUserId;
+  
+  if (cachedProjectContext && cacheKey === (Deno.env.get("PROJECT_DIR") || Deno.cwd())) {
+    userId = getScopedUserId(baseUserId, cachedProjectContext);
+  } else {
+    // Fallback: must remain sync, so we can't use detectProject here
+    // This maintains backward compatibility but may be inaccurate for monorepos
+    console.warn("[zep-client] Sync getDefaultConfig() called before async initialization. User ID may be inaccurate for monorepos.");
+    userId = baseUserId; // Safe fallback
+  }
+  
+  return {
+    apiKey: Deno.env.get("ZEP_API_KEY") || "",
+    userId,
+    defaultLimit: 10,
+    defaultScope: "edges"
+  };
+}
+
+/**
+ * Get default configuration with async project detection
+ * Preferred over getDefaultConfig() for accurate project detection
+ */
+export async function getDefaultConfigAsync(): Promise<ZepConfig> {
+  const baseUserId = "developer";
+  
+  // Check for explicit user ID override first
+  const explicitUserId = Deno.env.get("ZEP_USER_ID");
+  if (explicitUserId) {
+    return {
+      apiKey: Deno.env.get("ZEP_API_KEY") || "",
+      userId: explicitUserId,
+      defaultLimit: 10,
+      defaultScope: "edges"
+    };
+  }
+  
+  // Use full project detection
+  const projectContext = await getCachedProjectContext();
+  const userId = getScopedUserId(baseUserId, projectContext);
   
   return {
     apiKey: Deno.env.get("ZEP_API_KEY") || "",
