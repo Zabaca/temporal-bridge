@@ -9,9 +9,12 @@
     "hook": "deno run --allow-env --allow-read --allow-write --allow-net src/hooks/store_conversation.ts",
     "mcp": "deno run --allow-env --allow-read --allow-net src/mcp-server.ts",
     "install": "deno cache src/retrieve_memory.ts src/hooks/store_conversation.ts src/mcp-server.ts",
-    "check": "deno check src/**/*.ts",
-    "fmt": "deno fmt src/",
-    "lint": "deno lint src/"
+    "check": "deno check --quiet src/**/*.ts",
+    "fmt": "deno fmt src/ tests/",
+    "lint": "deno lint src/ tests/",
+    "test": "deno test --allow-env --allow-read --no-check tests/",
+    "test:watch": "deno test --allow-env --allow-read --watch --no-check tests/",
+    "test:coverage": "deno test --allow-env --allow-read --coverage=coverage --no-check tests/ && deno coverage coverage"
   },
   "imports": {
     "@getzep/zep-cloud": "npm:@getzep/zep-cloud@3.2.0"

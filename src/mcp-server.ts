@@ -181,6 +181,131 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["query"],
         },
       },
+      {
+        name: "get_project_portfolio",
+        description: "Get overview of all projects with technology stacks and activity metrics",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "get_technology_expertise",
+        description: "Analyze technology expertise across all projects",
+        inputSchema: {
+          type: "object",
+          properties: {
+            technology: {
+              type: "string",
+              description: "Specific technology to analyze (optional, returns all technologies if not specified)",
+            },
+          },
+        },
+      },
+      {
+        name: "search_project_conversations",
+        description: "Search conversations within a specific project",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project_id: {
+              type: "string",
+              description: "Project identifier to search within",
+            },
+            query: {
+              type: "string",
+              description: "Search query within the project (optional)",
+            },
+            limit: {
+              type: "number",
+              description: "Number of results to return (default: 10)",
+              default: 10,
+            },
+          },
+          required: ["project_id"],
+        },
+      },
+      {
+        name: "analyze_cross_project_patterns",
+        description: "Analyze patterns and practices across multiple projects",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pattern: {
+              type: "string",
+              description: "Pattern, practice, or concept to analyze across projects",
+            },
+            limit: {
+              type: "number",
+              description: "Number of projects to analyze (default: 10)",
+              default: 10,
+            },
+          },
+          required: ["pattern"],
+        },
+      },
+      {
+        name: "list_projects",
+        description: "List all projects with basic information and metrics",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "project_technologies", 
+        description: "Get detailed technology information for a specific project",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project_id: {
+              type: "string",
+              description: "Project identifier to get technologies for",
+            },
+          },
+          required: ["project_id"],
+        },
+      },
+      {
+        name: "project_context",
+        description: "Get comprehensive context information for current or specified project",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project_id: {
+              type: "string", 
+              description: "Project identifier (optional, defaults to current project)",
+            },
+          },
+        },
+      },
+      {
+        name: "project_relationships",
+        description: "Get all relationships and connections for a specific project",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project_id: {
+              type: "string",
+              description: "Project identifier to get relationships for",
+            },
+          },
+          required: ["project_id"],
+        },
+      },
+      {
+        name: "project_statistics",
+        description: "Get project statistics and analytics (overall or project-specific)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project_id: {
+              type: "string",
+              description: "Project identifier for specific stats (optional, returns overall stats if not provided)",
+            },
+          },
+        },
+      },
     ],
   };
 });
@@ -195,8 +320,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     // Import memory tools dynamically to avoid circular imports
-    const { getThreadContext, getRecentEpisodes, getCurrentContext, shareToProjectGroup, searchMemory, searchProjectMemory, searchBothGraphs } = await import("./lib/memory-tools.ts");
+    const { 
+      getThreadContext, 
+      getRecentEpisodes, 
+      getCurrentContext, 
+      shareToProjectGroup, 
+      searchMemory, 
+      searchProjectMemory, 
+      searchBothGraphs,
+      getProjectPortfolio,
+      getTechnologyExpertise,
+      searchProjectConversations,
+      analyzeCrossProjectPatterns
+    } = await import("./lib/memory-tools.ts");
     const { getDefaultConfigAsync } = await import("./lib/zep-client.ts");
+    const { 
+      listProjectEntities,
+      getProjectTechnologies,
+      getCurrentProjectContext,
+      getProjectRelationships,
+      getProjectStatistics
+    } = await import("./lib/project-entities.ts");
 
     switch (name) {
 
@@ -283,10 +427,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           };
         }
 
-        const targetGroupId = args.project ? `project-${args.project}` : projectContext.groupId;
+        const targetGraphId = args.project ? `project-${args.project}` : projectContext.groupId;
         const projectMemory = await searchProjectMemory(
           args.query as string,
-          targetGroupId,
+          targetGraphId,
           (args.scope as any) || "edges",
           args.limit as number || 5,
           (args.reranker as any) || "cross_encoder"
@@ -298,7 +442,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               text: JSON.stringify({
                 source: "project",
                 project: args.project || projectContext.projectName,
-                groupId: targetGroupId,
+                graphId: targetGraphId,
                 results: projectMemory
               }, null, 2),
             },
@@ -331,10 +475,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           };
         }
 
-        const targetGroupIdAll = args.project ? `project-${args.project}` : projectContextAll.groupId;
+        const targetGraphIdAll = args.project ? `project-${args.project}` : projectContextAll.groupId;
         const allMemories = await searchBothGraphs(
           args.query as string,
-          targetGroupIdAll,
+          targetGraphIdAll,
           args.limit as number || 5
         );
         return {
@@ -347,6 +491,165 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 personal: allMemories.personal,
                 project_results: allMemories.project
               }, null, 2),
+            },
+          ],
+        };
+
+      case "get_project_portfolio":
+        const portfolio = await getProjectPortfolio();
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                projects: portfolio,
+                total_projects: portfolio.length,
+                total_technologies: [...new Set(portfolio.flatMap(p => p.technologies))].length
+              }, null, 2),
+            },
+          ],
+        };
+
+      case "get_technology_expertise":
+        const techExpertise = await getTechnologyExpertise(args.technology as string);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                technology_filter: args.technology || "all",
+                expertise: techExpertise,
+                total_technologies: techExpertise.length
+              }, null, 2),
+            },
+          ],
+        };
+
+      case "search_project_conversations":
+        const projectConversations = await searchProjectConversations(
+          args.project_id as string,
+          args.query as string,
+          args.limit as number || 10
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                project_id: args.project_id,
+                query: args.query,
+                conversations: projectConversations,
+                total_results: projectConversations.length
+              }, null, 2),
+            },
+          ],
+        };
+
+      case "analyze_cross_project_patterns":
+        const crossProjectAnalysis = await analyzeCrossProjectPatterns(
+          args.pattern as string,
+          args.limit as number || 10
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(crossProjectAnalysis, null, 2),
+            },
+          ],
+        };
+
+      case "list_projects":
+        const projectList = await listProjectEntities();
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                projects: projectList.projects || [],
+                total_projects: projectList.count || 0,
+                success: projectList.success,
+                error: projectList.error
+              }, null, 2),
+            },
+          ],
+        };
+
+      case "project_technologies":
+        const projectTech = await getProjectTechnologies(args.project_id as string);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(projectTech, null, 2),
+            },
+          ],
+        };
+
+      case "project_context":
+        let contextResult;
+        if (args.project_id) {
+          // Get specific project context
+          const entityResult = await listProjectEntities();
+          const project = entityResult.projects?.find(p => 
+            p.name === args.project_id || 
+            p.attributes?.name === args.project_id
+          );
+          
+          if (project) {
+            const techResult = await getProjectTechnologies(args.project_id as string);
+            const relationshipResult = await getProjectRelationships(args.project_id as string);
+            
+            contextResult = {
+              success: true,
+              project: {
+                projectId: project.name,
+                projectName: project.attributes?.displayName || project.name,
+                organization: project.attributes?.organization,
+                projectPath: project.attributes?.path,
+                technologies: techResult.technologies?.map(t => t.name) || [],
+                lastActivity: project.attributes?.lastUpdated,
+                relationships: relationshipResult.relationships
+              }
+            };
+          } else {
+            contextResult = {
+              success: false,
+              error: `Project not found: ${args.project_id}`
+            };
+          }
+        } else {
+          // Get current project context
+          contextResult = await getCurrentProjectContext();
+        }
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(contextResult, null, 2),
+            },
+          ],
+        };
+
+      case "project_relationships":
+        const relationshipResult = await getProjectRelationships(args.project_id as string);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(relationshipResult, null, 2),
+            },
+          ],
+        };
+
+      case "project_statistics":
+        const statsResult = await getProjectStatistics(args.project_id as string);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(statsResult, null, 2),
             },
           ],
         };

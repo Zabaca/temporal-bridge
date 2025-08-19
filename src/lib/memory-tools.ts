@@ -77,21 +77,25 @@ export async function searchFacts(
 }
 
 /**
- * Search memory across different scopes (edges, nodes, episodes)
+ * Search memory across different scopes (edges, nodes, episodes) with optional project filtering
  */
 export async function searchMemory(
   query: string, 
   scope: "edges" | "nodes" | "episodes" = "episodes", 
   limit = 5,
-  reranker: 'cross_encoder' | 'none' = 'cross_encoder'
+  reranker: 'cross_encoder' | 'none' = 'cross_encoder',
+  projectFilter?: string
 ): Promise<MemorySearchResult[]> {
   const config = await getDefaultConfigAsync();
   const client = createZepClient();
   
   try {
+    // Enhance query with project filter if provided
+    const enhancedQuery = projectFilter ? `${query} ${projectFilter}` : query;
+    
     const searchResults = await client.graph.search({
       userId: config.userId || "developer",
-      query,
+      query: enhancedQuery,
       scope: scope as any,
       limit,
       reranker: reranker as any
@@ -110,6 +114,8 @@ export async function searchMemory(
           metadata: {
             scope,
             uuid: edge.uuid,
+            project_filtered: !!projectFilter,
+            project_filter: projectFilter,
             valid_at: edge.validAt,
             expired_at: edge.expiredAt,
             source_node: edge.sourceNodeUuid,
@@ -128,6 +134,8 @@ export async function searchMemory(
           metadata: {
             scope,
             uuid: node.uuid,
+            project_filtered: !!projectFilter,
+            project_filter: projectFilter,
             name: node.name,
             labels: node.labels,
             attributes: node.attributes
@@ -144,6 +152,8 @@ export async function searchMemory(
           metadata: {
             scope,
             uuid: episode.uuid,
+            project_filtered: !!projectFilter,
+            project_filter: projectFilter,
             processed: episode.processed,
             role_type: episode.roleType,
             source: episode.source,
@@ -301,15 +311,19 @@ export async function getCurrentThreadId(): Promise<string> {
   const projectPath = Deno.env.get("PROJECT_DIR") || Deno.cwd();
   
   try {
-    // Read session ID from project directory
-    const sessionIdFile = `${projectPath}/.claude-session-id`;
-    const sessionId = await Deno.readTextFile(sessionIdFile);
+    // Read session info from project directory
+    const { getCurrentSessionId } = await import("./session-manager.ts");
+    const sessionId = await getCurrentSessionId(projectPath);
+    
+    if (!sessionId) {
+      throw new Error("No session ID found in .claude-session-id file");
+    }
     
     // Detect project context  
     const { detectProject } = await import("./project-detector.ts");
     const projectContext = await detectProject(projectPath);
     
-    return `claude-code-${projectContext.projectId}-${sessionId.trim()}`;
+    return `claude-code-${projectContext.projectId}-${sessionId}`;
   } catch (error) {
     throw new Error(`Cannot get current thread ID: ${(error as any).message}. Make sure conversation hook is active.`);
   }
@@ -435,7 +449,7 @@ export async function retrieveMemory(options: UnifiedMemoryQuery = {}): Promise<
  */
 export async function searchProjectMemory(
   query: string,
-  groupId: string,
+  graphId: string,
   scope: "edges" | "nodes" | "episodes" = "edges",
   limit = 10,
   reranker: 'cross_encoder' | 'none' = 'cross_encoder'
@@ -443,8 +457,8 @@ export async function searchProjectMemory(
   const client = createZepClient();
   
   try {
-    const searchResults = await (client.graph as any).search({
-      groupId,
+    const searchResults = await client.graph.search({
+      graphId,
       query,
       scope,
       reranker: reranker === 'none' ? undefined : reranker,
@@ -469,7 +483,7 @@ export async function searchProjectMemory(
             scope: "group_edges",
             uuid: edge.uuid,
             source: "project_knowledge",
-            groupId,
+            graphId,
             fact: edge.fact,
             sourceNode: (edge as any).sourceNodeName,
             targetNode: (edge as any).targetNodeName
@@ -490,7 +504,7 @@ export async function searchProjectMemory(
             scope: "group_nodes",
             uuid: node.uuid,
             source: "project_entities",
-            groupId,
+            graphId,
             name: node.name,
             summary: node.summary
           }
@@ -510,7 +524,7 @@ export async function searchProjectMemory(
             scope: "group_episodes",
             uuid: episode.uuid,
             source: "project_conversations",
-            groupId,
+            graphId,
             processed: episode.processed,
             role_type: episode.roleType
           }
@@ -529,18 +543,18 @@ export async function searchProjectMemory(
  * Add content to project group graph
  */
 export async function addToProjectGroup(
-  groupId: string,
+  graphId: string,
   content: string,
   metadata?: Record<string, unknown>
 ): Promise<void> {
   const client = createZepClient();
   
   try {
-    await (client.graph as any).add({
-      groupId,
+    await client.graph.add({
+      graphId,
       type: "text",
       data: content,
-      ...(metadata && { metadata })
+      sourceDescription: metadata ? JSON.stringify(metadata) : undefined
     });
   } catch (error) {
     console.error("❌ Error adding to project group:", error);
@@ -551,13 +565,13 @@ export async function addToProjectGroup(
 /**
  * Ensure project group exists, create if needed
  */
-export async function ensureProjectGroup(groupId: string, projectName: string): Promise<void> {
+export async function ensureProjectGroup(graphId: string, projectName: string): Promise<void> {
   const client = createZepClient();
   
   try {
     // Try to check if group exists by searching it
-    await (client.graph as any).search({
-      groupId,
+    await client.graph.search({
+      graphId,
       query: "test",
       limit: 1
     });
@@ -566,16 +580,12 @@ export async function ensureProjectGroup(groupId: string, projectName: string): 
     // If 404 or similar, group doesn't exist, create it
     if ((error as any).status === 404 || (error as any).statusCode === 404) {
       try {
-        await (client.graph as any).create({
-          groupId,
+        await client.graph.create({
+          graphId,
           name: projectName,
-          metadata: {
-            createdBy: "temporal-bridge",
-            projectName,
-            type: "project_knowledge"
-          }
+          description: `Project knowledge graph for ${projectName} created by temporal-bridge`
         });
-        console.log(`✅ Created project group: ${groupId}`);
+        console.log(`✅ Created project group: ${graphId}`);
       } catch (createError) {
         // Group might have been created between check and create
         if (!(createError as any).message?.includes("already exists")) {
@@ -595,7 +605,7 @@ export async function ensureProjectGroup(groupId: string, projectName: string): 
 export async function shareToProjectGroup(
   message: string,
   projectName?: string
-): Promise<{ success: boolean; message: string; groupId?: string }> {
+): Promise<{ success: boolean; message: string; graphId?: string }> {
   try {
     // Validate input
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -618,20 +628,20 @@ export async function shareToProjectGroup(
       throw new Error("Invalid project name. Must contain only letters, numbers, hyphens, and underscores.");
     }
     
-    const targetGroupId = projectName ? 
+    const targetGraphId = projectName ? 
       `project-${projectName}` : 
       config.projectContext.groupId;
     
     const targetProjectName = projectName || config.projectContext.projectName;
     
     // Ensure group exists
-    await ensureProjectGroup(targetGroupId, targetProjectName);
+    await ensureProjectGroup(targetGraphId, targetProjectName);
     
     // Add timestamp and attribution
     const timestampedMessage = `[${new Date().toISOString()}] ${message}`;
     
     // Add to project group
-    await addToProjectGroup(targetGroupId, timestampedMessage, {
+    await addToProjectGroup(targetGraphId, timestampedMessage, {
       sharedBy: config.userId,
       projectName: projectName || config.projectContext.projectName,
       timestamp: new Date().toISOString(),
@@ -640,8 +650,8 @@ export async function shareToProjectGroup(
     
     return {
       success: true,
-      message: `✅ Knowledge shared to project: ${targetProjectName}\n📝 Message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"\n🔗 Group ID: ${targetGroupId}\n👤 Shared by: ${config.userId}`,
-      groupId: targetGroupId
+      message: `✅ Knowledge shared to project: ${targetProjectName}\n📝 Message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"\n🔗 Graph ID: ${targetGraphId}\n👤 Shared by: ${config.userId}`,
+      graphId: targetGraphId
     };
     
   } catch (error) {
@@ -658,17 +668,454 @@ export async function shareToProjectGroup(
  */
 export async function searchBothGraphs(
   query: string,
-  groupId?: string,
+  graphId?: string,
   limit = 5
 ): Promise<{ personal: MemorySearchResult[]; project: MemorySearchResult[] }> {
   const personalResults = await searchMemory(query, "edges", limit);
-  const projectResults = groupId ? 
-    await searchProjectMemory(query, groupId, "edges", limit) : 
+  const projectResults = graphId ? 
+    await searchProjectMemory(query, graphId, "edges", limit) : 
     [];
 
   return {
     personal: personalResults,
     project: projectResults
   };
+}
+
+/**
+ * Enhanced Search Capabilities for Project Entities
+ */
+
+export interface ProjectPortfolioResult {
+  projectId: string;
+  projectName: string;
+  organization?: string;
+  technologies: string[];
+  conversationCount: number;
+  lastActivity: string;
+  techExpertiseScore: number;
+}
+
+export interface TechnologyExpertiseResult {
+  technology: string;
+  confidenceScore: number;
+  projectsUsing: string[];
+  usageContext: string[];
+  totalExperience: number;
+}
+
+/**
+ * Search personal memories with project filtering
+ */
+export async function searchPersonalWithProjectFilter(
+  query: string,
+  projectId?: string,
+  scope: "edges" | "nodes" | "episodes" = "episodes",
+  limit = 5
+): Promise<MemorySearchResult[]> {
+  const client = createZepClient();
+  const config = await getDefaultConfigAsync();
+  const userId = config.userId || "developer";
+  
+  try {
+    // If project filtering requested, modify query to include project context
+    const enhancedQuery = projectId ? 
+      `${query} project:${projectId}` : 
+      query;
+    
+    const searchResults = await client.graph.search({
+      userId,
+      query: enhancedQuery,
+      scope: scope as any,
+      limit,
+      reranker: "cross_encoder" as any
+    });
+
+    const results: MemorySearchResult[] = [];
+
+    // Process results based on scope
+    if (scope === 'edges' && searchResults?.edges) {
+      for (const edge of searchResults.edges) {
+        // Filter by project if specified
+        if (projectId && !edge.fact?.includes(projectId)) {
+          continue;
+        }
+        
+        results.push({
+          content: edge.fact || "Edge relation",
+          score: edge.score ?? 0,
+          type: "edge",
+          created_at: edge.createdAt,
+          metadata: {
+            scope,
+            uuid: edge.uuid,
+            project_filtered: !!projectId,
+            project_id: projectId,
+            valid_at: edge.validAt,
+            expired_at: edge.expiredAt,
+            episodes: edge.episodes
+          }
+        });
+      }
+    } else if (scope === 'episodes' && searchResults?.episodes) {
+      for (const episode of searchResults.episodes) {
+        results.push({
+          content: episode.content || "Episode content",
+          score: episode.score ?? 0,
+          type: "episode", 
+          created_at: episode.createdAt,
+          metadata: {
+            scope,
+            uuid: episode.uuid,
+            project_filtered: !!projectId,
+            project_id: projectId,
+            processed: episode.processed,
+            role_type: episode.roleType,
+            source: episode.source,
+            session_id: episode.sessionId
+          }
+        });
+      }
+    } else if (scope === 'nodes' && searchResults?.nodes) {
+      for (const node of searchResults.nodes) {
+        results.push({
+          content: node.summary || node.name || "Node",
+          score: node.score ?? 0,
+          type: "node",
+          created_at: node.createdAt,
+          metadata: {
+            scope,
+            uuid: node.uuid,
+            project_filtered: !!projectId,
+            project_id: projectId,
+            name: node.name,
+            labels: node.labels,
+            entity_type: node.labels?.includes("project") ? "Project" : "unknown"
+          }
+        });
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error("Search personal with project filter error:", error);
+    return [];
+  }
+}
+
+/**
+ * Get project portfolio overview
+ */
+export async function getProjectPortfolio(): Promise<ProjectPortfolioResult[]> {
+  const client = createZepClient();
+  const config = await getDefaultConfigAsync();
+  const userId = config.userId || "developer";
+  
+  try {
+    // Search for all project entities
+    const projectResults = await client.graph.search({
+      userId,
+      query: "Project",
+      scope: 'nodes',
+      limit: 50
+    });
+
+    const portfolio: ProjectPortfolioResult[] = [];
+    
+    if (projectResults?.nodes) {
+      for (const node of projectResults.nodes) {
+        if (node.labels?.includes("project") || node.labels?.includes("Project")) {
+          // Get project technologies from attributes
+          const technologies = typeof node.attributes?.technologies === 'string' 
+            ? node.attributes.technologies.split(", ") 
+            : [];
+          
+          // Search for conversations in this project
+          const conversationResults = await client.graph.search({
+            userId,
+            query: `OCCURS_IN ${node.name}`,
+            scope: 'edges',
+            limit: 100
+          });
+          
+          const conversationCount = conversationResults?.edges?.length || 0;
+          
+          // Calculate tech expertise score based on technology count and confidence
+          const techExpertiseScore = technologies.length > 0 ? 
+            technologies.length * (typeof node.attributes?.overallConfidence === 'number' ? node.attributes.overallConfidence : 0.7) : 0;
+          
+          portfolio.push({
+            projectId: typeof node.name === 'string' ? node.name : (typeof node.attributes?.name === 'string' ? node.attributes.name : "unknown"),
+            projectName: typeof node.attributes?.displayName === 'string' ? node.attributes.displayName : (typeof node.name === 'string' ? node.name : "Unknown Project"),
+            organization: typeof node.attributes?.organization === 'string' ? node.attributes.organization : undefined,
+            technologies,
+            conversationCount,
+            lastActivity: typeof node.attributes?.lastUpdated === 'string' ? node.attributes.lastUpdated : (typeof node.createdAt === 'string' ? node.createdAt : "unknown"),
+            techExpertiseScore: Math.round(techExpertiseScore * 100) / 100
+          });
+        }
+      }
+    }
+    
+    // Sort by tech expertise score and last activity
+    return portfolio.sort((a, b) => {
+      if (b.techExpertiseScore !== a.techExpertiseScore) {
+        return b.techExpertiseScore - a.techExpertiseScore;
+      }
+      return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+    });
+    
+  } catch (error) {
+    console.error("Get project portfolio error:", error);
+    return [];
+  }
+}
+
+/**
+ * Get technology expertise analysis
+ */
+export async function getTechnologyExpertise(technology?: string): Promise<TechnologyExpertiseResult[]> {
+  const client = createZepClient();
+  const config = await getDefaultConfigAsync();
+  const userId = config.userId || "developer";
+  
+  try {
+    // Search for technology usage relationships
+    const queryTerm = technology ? `USES ${technology}` : "USES";
+    const technologyResults = await client.graph.search({
+      userId,
+      query: queryTerm,
+      scope: 'edges',
+      limit: 100
+    });
+
+    const techExpertise = new Map<string, TechnologyExpertiseResult>();
+    
+    if (technologyResults?.edges) {
+      for (const edge of technologyResults.edges) {
+        // Parse "project USES technology" facts
+        const match = edge.fact?.match(/(.+)\s+USES\s+(.+)/);
+        if (match && match[1] && match[2]) {
+          const [, projectName, techName] = match;
+          
+          if (!techExpertise.has(techName)) {
+            techExpertise.set(techName, {
+              technology: techName,
+              confidenceScore: 0,
+              projectsUsing: [],
+              usageContext: [],
+              totalExperience: 0
+            });
+          }
+          
+          const expertise = techExpertise.get(techName)!;
+          expertise.projectsUsing.push(projectName);
+          expertise.confidenceScore = Math.max(expertise.confidenceScore, edge.score || 0);
+          expertise.totalExperience += edge.score || 0;
+          
+          // Add context from episodes if available
+          if (edge.episodes && edge.episodes.length > 0) {
+            expertise.usageContext.push(`Used in ${edge.episodes.length} conversations`);
+          }
+        }
+      }
+    }
+
+    // Convert to array and sort by total experience
+    const results = Array.from(techExpertise.values()).sort((a, b) => 
+      b.totalExperience - a.totalExperience
+    );
+
+    // If specific technology requested, filter to that technology
+    return technology ? 
+      results.filter(r => r.technology.toLowerCase().includes(technology.toLowerCase())) :
+      results;
+      
+  } catch (error) {
+    console.error("Get technology expertise error:", error);
+    return [];
+  }
+}
+
+/**
+ * Analyze cross-project patterns
+ */
+export async function analyzeCrossProjectPatterns(
+  pattern: string,
+  limit = 10
+): Promise<{
+  pattern: string;
+  projects: Array<{
+    projectId: string;
+    projectName: string;
+    matches: MemorySearchResult[];
+    relevanceScore: number;
+  }>;
+  totalMatches: number;
+}> {
+  const client = createZepClient();
+  const config = await getDefaultConfigAsync();
+  const userId = config.userId || "developer";
+  
+  try {
+    // Search across all conversations and relationships for the pattern
+    const patternResults = await client.graph.search({
+      userId,
+      query: pattern,
+      scope: 'edges',
+      limit: limit * 5 // Get more results to group by project
+    });
+
+    const projectMatches = new Map<string, {
+      projectId: string;
+      projectName: string;
+      matches: MemorySearchResult[];
+      relevanceScore: number;
+    }>();
+
+    if (patternResults?.edges) {
+      for (const edge of patternResults.edges) {
+        // Try to extract project context from the fact
+        const projectMatch = edge.fact?.match(/(\w+-\w+-\w+)/); // Match project ID pattern
+        const projectId = (projectMatch && projectMatch[1]) ? projectMatch[1] : "unknown";
+        
+        if (!projectMatches.has(projectId)) {
+          projectMatches.set(projectId, {
+            projectId,
+            projectName: projectId.replace(/-/g, ' '),
+            matches: [],
+            relevanceScore: 0
+          });
+        }
+        
+        const project = projectMatches.get(projectId)!;
+        project.matches.push({
+          content: edge.fact || "Pattern match",
+          score: edge.score ?? 0,
+          type: "edge",
+          created_at: edge.createdAt,
+          metadata: {
+            scope: "cross_project_analysis",
+            uuid: edge.uuid,
+            pattern_matched: pattern,
+            project_id: projectId
+          }
+        });
+        
+        project.relevanceScore += edge.score ?? 0;
+      }
+    }
+
+    const projects = Array.from(projectMatches.values())
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .slice(0, limit);
+
+    return {
+      pattern,
+      projects,
+      totalMatches: patternResults?.edges?.length || 0
+    };
+    
+  } catch (error) {
+    console.error("Analyze cross-project patterns error:", error);
+    return {
+      pattern,
+      projects: [],
+      totalMatches: 0
+    };
+  }
+}
+
+/**
+ * Search conversations specific to a project
+ */
+export async function searchProjectConversations(
+  projectId: string,
+  query?: string,
+  limit = 10
+): Promise<MemorySearchResult[]> {
+  const client = createZepClient();
+  const config = await getDefaultConfigAsync();
+  const userId = config.userId || "developer";
+  
+  try {
+    // Search for sessions that occurred in the project
+    const sessionQuery = `OCCURS_IN ${projectId}`;
+    const sessionResults = await client.graph.search({
+      userId,
+      query: sessionQuery,
+      scope: 'edges',
+      limit: 50
+    });
+
+    const sessionIds = new Set<string>();
+    if (sessionResults?.edges) {
+      for (const edge of sessionResults.edges) {
+        // Extract session ID from facts like "session-abc123 OCCURS_IN project"
+        const sessionMatch = edge.fact?.match(/session-([^\s]+)/);
+        if (sessionMatch && sessionMatch[1]) {
+          sessionIds.add(sessionMatch[1]);
+        }
+      }
+    }
+
+    // If we have specific query, search within project context
+    if (query && sessionIds.size > 0) {
+      const enhancedQuery = `${query} session:(${Array.from(sessionIds).join('|')})`;
+      const queryResults = await client.graph.search({
+        userId,
+        query: enhancedQuery,
+        scope: 'episodes',
+        limit
+      });
+
+      if (queryResults?.episodes) {
+        return queryResults.episodes.map(episode => ({
+          content: episode.content || "Project conversation",
+          score: episode.score ?? 0,
+          type: "episode" as const,
+          created_at: episode.createdAt,
+          metadata: {
+            scope: "project_conversations",
+            uuid: episode.uuid,
+            project_id: projectId,
+            session_id: episode.sessionId,
+            processed: episode.processed,
+            role_type: episode.roleType
+          }
+        }));
+      }
+    }
+
+    // Otherwise, return general project-related facts
+    const projectResults = await client.graph.search({
+      userId,
+      query: projectId,
+      scope: 'edges',
+      limit
+    });
+
+    if (projectResults?.edges) {
+      return projectResults.edges.map(edge => ({
+        content: edge.fact || "Project relationship",
+        score: edge.score ?? 0,
+        type: "edge" as const,
+        created_at: edge.createdAt,
+        metadata: {
+          scope: "project_facts",
+          uuid: edge.uuid,
+          project_id: projectId,
+          valid_at: edge.validAt,
+          expired_at: edge.expiredAt
+        }
+      }));
+    }
+
+    return [];
+    
+  } catch (error) {
+    console.error("Search project conversations error:", error);
+    return [];
+  }
 }
 

@@ -8,6 +8,7 @@
 import type { HookData, TranscriptMessage, ParsedMessage } from "../lib/types.ts";
 import { createZepClient, ensureUser, ensureThread, getDefaultConfigAsync } from "../lib/zep-client.ts";
 import { detectProject } from "../lib/project-detector.ts";
+import { ensureProjectEntity, createSessionProjectRelationship } from "../lib/project-entities.ts";
 
 function findCurrentTransaction(parsedMessages: ParsedMessage[], rawMessages: TranscriptMessage[]): ParsedMessage[] {
   if (parsedMessages.length === 0) return [];
@@ -147,6 +148,67 @@ async function storeConversation(hookData: HookData): Promise<void> {
   await ensureUser(client, userId);
   await ensureThread(client, threadId, userId);
 
+  // Create/update project entity and relationships (optimized - only on first message of session)
+  let projectEntityResult;
+  try {
+    const { shouldProcessProjectEntity, markProjectEntityProcessed } = await import("../lib/session-manager.ts");
+    
+    const shouldCreateEntity = await shouldProcessProjectEntity(
+      projectContext.projectPath, 
+      hookData.session_id,
+      1 // 1 hour cache
+    );
+    
+    if (shouldCreateEntity) {
+      console.log(`🔄 Creating/updating project entity for session ${hookData.session_id}`);
+      projectEntityResult = await ensureProjectEntity(projectContext.projectPath);
+      
+      if (projectEntityResult.success) {
+        console.log(`✅ Project entity: ${projectEntityResult.projectEntity?.name} (${projectEntityResult.technologiesDetected} technologies)`);
+        
+        // Create session-project relationship
+        const sessionRelationResult = await createSessionProjectRelationship(
+          hookData.session_id, 
+          projectContext.projectId
+        );
+        
+        if (sessionRelationResult.success) {
+          console.log(`🔗 Session linked to project: ${sessionRelationResult.message}`);
+          
+          // Mark as processed in session cache
+          await markProjectEntityProcessed(
+            projectContext.projectPath,
+            hookData.session_id,
+            projectEntityResult.technologiesDetected,
+            true
+          );
+        } else {
+          console.warn(`⚠️  Failed to link session to project: ${sessionRelationResult.error}`);
+          await markProjectEntityProcessed(
+            projectContext.projectPath,
+            hookData.session_id,
+            undefined,
+            false
+          );
+        }
+      } else {
+        console.warn(`⚠️  Project entity creation failed: ${projectEntityResult.error}`);
+        await markProjectEntityProcessed(
+          projectContext.projectPath,
+          hookData.session_id,
+          undefined,
+          false
+        );
+      }
+    } else {
+      // Session already processed recently, just log
+      console.log(`⚡ Using cached project entity for session ${hookData.session_id}`);
+    }
+  } catch (entityError) {
+    console.error(`❌ Error during project entity creation:`, entityError);
+    // Continue with conversation storage even if entity creation fails
+  }
+
   // Find current transaction using parent-child relationships
   const transactionMessages = findCurrentTransaction(messages, lines.map(line => {
     try {
@@ -156,12 +218,18 @@ async function storeConversation(hookData: HookData): Promise<void> {
     }
   }).filter(msg => msg !== null));
 
-  // Write current session ID to project directory for current thread detection
+  // Write current session info to project directory for current thread detection
+  const { updateSessionInfo } = await import("../lib/session-manager.ts");
   try {
-    const sessionIdFile = `${projectContext.projectPath}/.claude-session-id`;
-    await Deno.writeTextFile(sessionIdFile, hookData.session_id);
+    await updateSessionInfo(projectContext.projectPath, {
+      sessionId: hookData.session_id,
+      metadata: {
+        source: "claude-code-hook",
+        projectId: projectContext.projectId
+      }
+    });
   } catch (sessionError) {
-    console.error(`❌ Failed to write session ID file:`, sessionError);
+    console.error(`❌ Failed to write session info file:`, sessionError);
   }
 
   // DEBUG: Write parsed messages to debug file
@@ -173,9 +241,16 @@ async function storeConversation(hookData: HookData): Promise<void> {
     project_context: projectContext,
     user_id: userId,
     thread_id: threadId,
-    storage_architecture: "user_graph_with_project_metadata",
+    storage_architecture: "user_graph_with_project_entities",
     total_messages_parsed: messages.length,
     current_transaction_messages: transactionMessages.length,
+    project_entity_result: projectEntityResult ? {
+      success: projectEntityResult.success,
+      project_name: projectEntityResult.projectEntity?.name,
+      technologies_detected: projectEntityResult.technologiesDetected,
+      relationships_created: projectEntityResult.relationships?.length || 0,
+      error: projectEntityResult.error
+    } : null,
     all_messages: messages,
     current_transaction: transactionMessages,
     raw_transcript_lines: lines.length,
@@ -228,6 +303,10 @@ async function storeConversation(hookData: HookData): Promise<void> {
       
       console.log(`✅ TemporalBridge: ${shortMessages.length} thread + ${largeMessages.length} graph messages stored in user graph`);
       console.log(`📊 Project: ${projectContext.projectName} (${projectContext.groupId})`);
+      
+      if (projectEntityResult?.success) {
+        console.log(`🏗️  Project Entity: ${projectEntityResult.technologiesDetected} technologies, ${projectEntityResult.relationships?.length || 0} relationships`);
+      }
     } catch (addMessagesError) {
       console.error(`❌ Failed to add transaction messages:`, addMessagesError);
       throw addMessagesError;

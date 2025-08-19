@@ -1,0 +1,12 @@
+{
+  "sessionId": "10305684-da78-42a7-a890-7edb5c129fc9",
+  "lastUpdated": "2025-08-19T15:21:32.606Z",
+  "projectEntityCache": {
+    "lastProcessed": "2025-08-19T15:16:15.776Z",
+    "success": false
+  },
+  "metadata": {
+    "source": "claude-code-hook",
+    "projectId": "zabaca-temporal-bridge"
+  }
+}

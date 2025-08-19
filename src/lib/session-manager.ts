@@ -1,0 +1,150 @@
+/**
+ * Session Management for Claude Code
+ * Manages the structured .claude-session-id file
+ */
+
+import type { ClaudeSessionInfo } from "./types.ts";
+
+const SESSION_FILE_NAME = ".claude-session-id";
+
+/**
+ * Read session information from project directory
+ */
+export async function readSessionInfo(projectPath: string): Promise<ClaudeSessionInfo | null> {
+  try {
+    const sessionFile = `${projectPath}/${SESSION_FILE_NAME}`;
+    const content = await Deno.readTextFile(sessionFile);
+    
+    // Try to parse as JSON first (new format)
+    try {
+      const sessionInfo = JSON.parse(content) as ClaudeSessionInfo;
+      
+      // Validate required fields
+      if (sessionInfo.sessionId && sessionInfo.lastUpdated) {
+        return sessionInfo;
+      }
+    } catch {
+      // Fall back to legacy format (plain session ID)
+      const sessionId = content.trim();
+      if (sessionId) {
+        return {
+          sessionId,
+          lastUpdated: new Date().toISOString(),
+          metadata: {
+            source: "legacy-migration"
+          }
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    // File doesn't exist or can't be read
+    return null;
+  }
+}
+
+/**
+ * Write session information to project directory
+ */
+export async function writeSessionInfo(
+  projectPath: string, 
+  sessionInfo: ClaudeSessionInfo
+): Promise<void> {
+  try {
+    const sessionFile = `${projectPath}/${SESSION_FILE_NAME}`;
+    
+    // Ensure lastUpdated is current
+    const updatedSessionInfo = {
+      ...sessionInfo,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    await Deno.writeTextFile(sessionFile, JSON.stringify(updatedSessionInfo, null, 2));
+  } catch (error) {
+    console.error(`❌ Failed to write session file:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Update session information with new data
+ */
+export async function updateSessionInfo(
+  projectPath: string,
+  updates: Partial<ClaudeSessionInfo>
+): Promise<ClaudeSessionInfo> {
+  const existing = await readSessionInfo(projectPath);
+  
+  const updated: ClaudeSessionInfo = {
+    sessionId: updates.sessionId || existing?.sessionId || "",
+    lastUpdated: new Date().toISOString(),
+    projectEntityCache: (existing?.projectEntityCache || updates.projectEntityCache) ? {
+      lastProcessed: "",
+      success: false,
+      ...existing?.projectEntityCache,
+      ...updates.projectEntityCache
+    } : undefined,
+    metadata: {
+      ...existing?.metadata,
+      ...updates.metadata
+    }
+  };
+  
+  await writeSessionInfo(projectPath, updated);
+  return updated;
+}
+
+/**
+ * Get current session ID from session info
+ */
+export async function getCurrentSessionId(projectPath: string): Promise<string | null> {
+  const sessionInfo = await readSessionInfo(projectPath);
+  return sessionInfo?.sessionId || null;
+}
+
+/**
+ * Check if project entity was processed recently for this session
+ */
+export async function shouldProcessProjectEntity(
+  projectPath: string,
+  sessionId: string,
+  maxAgeHours = 1
+): Promise<boolean> {
+  const sessionInfo = await readSessionInfo(projectPath);
+  
+  // If no session info or different session, process
+  if (!sessionInfo || sessionInfo.sessionId !== sessionId) {
+    return true;
+  }
+  
+  // If no cache info, process
+  if (!sessionInfo.projectEntityCache?.lastProcessed) {
+    return true;
+  }
+  
+  // Check if cache is stale
+  const lastProcessed = new Date(sessionInfo.projectEntityCache.lastProcessed);
+  const maxAge = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000);
+  
+  return lastProcessed < maxAge;
+}
+
+/**
+ * Mark project entity as processed for this session
+ */
+export async function markProjectEntityProcessed(
+  projectPath: string,
+  sessionId: string,
+  technologiesDetected?: number,
+  success = true
+): Promise<void> {
+  await updateSessionInfo(projectPath, {
+    sessionId,
+    projectEntityCache: {
+      lastProcessed: new Date().toISOString(),
+      technologiesDetected,
+      success
+    }
+  });
+}
