@@ -10,6 +10,25 @@ import { createZepClient, ensureUser, ensureThread, getDefaultConfigAsync } from
 import { detectProject } from "../lib/project-detector.ts";
 import { ensureProjectEntity, createSessionProjectRelationship } from "../lib/project-entities.ts";
 
+/**
+ * File-based UUID tracking to prevent duplicate message storage
+ */
+async function loadStoredUuids(sessionId: string): Promise<Set<string>> {
+  const uuidFile = `/home/uptown/.claude/temporal-bridge-stored-uuids-${sessionId}.txt`;
+  try {
+    const content = await Deno.readTextFile(uuidFile);
+    return new Set(content.split('\n').filter(line => line.trim()));
+  } catch {
+    return new Set(); // File doesn't exist yet
+  }
+}
+
+async function saveStoredUuids(sessionId: string, uuids: Set<string>): Promise<void> {
+  const uuidFile = `/home/uptown/.claude/temporal-bridge-stored-uuids-${sessionId}.txt`;
+  const content = Array.from(uuids).join('\n');
+  await Deno.writeTextFile(uuidFile, content);
+}
+
 function findCurrentTransaction(parsedMessages: ParsedMessage[], rawMessages: TranscriptMessage[]): ParsedMessage[] {
   if (parsedMessages.length === 0) return [];
   
@@ -325,11 +344,30 @@ async function storeConversation(hookData: HookData): Promise<void> {
   // Add messages to thread, splitting large messages
   if (transactionMessages.length > 0) {
     try {
+      // Load stored UUIDs for this session
+      const storedUuids = await loadStoredUuids(hookData.session_id);
+      
+      // Filter out messages that have already been stored
+      const newMessages = transactionMessages.filter(msg => {
+        if (msg.uuid && storedUuids.has(msg.uuid)) {
+          console.log(`🔄 Skipping duplicate message UUID: ${msg.uuid}`);
+          return false;
+        }
+        return true;
+      });
+
+      if (newMessages.length === 0) {
+        console.log(`⚡ All messages already stored, skipping transaction`);
+        return;
+      }
+
+      console.log(`📝 Processing ${newMessages.length}/${transactionMessages.length} new messages`);
+      
       // Split large messages and short messages
       const shortMessages = [];
       const largeMessages = [];
       
-      for (const msg of transactionMessages) {
+      for (const msg of newMessages) {
         if (msg.content.length > 2400) { // Leave some buffer for 2500 char limit
           largeMessages.push(msg);
         } else {
@@ -343,6 +381,13 @@ async function storeConversation(hookData: HookData): Promise<void> {
           messages: shortMessages as any,
         });
         console.log(`✅ Sent ${shortMessages.length} short messages to user thread`);
+        
+        // Track successful storage
+        shortMessages.forEach(msg => {
+          if (msg.uuid) {
+            storedUuids.add(msg.uuid);
+          }
+        });
       }
       
       // Add large messages using graph.add API with project metadata
@@ -354,13 +399,22 @@ async function storeConversation(hookData: HookData): Promise<void> {
             data: `${msg.name}: ${msg.content}`,
           });
           console.log(`✅ Sent large message (${msg.content.length} chars) to user graph`);
+          
+          // Track successful storage
+          if (msg.uuid) {
+            storedUuids.add(msg.uuid);
+          }
         } catch (graphError) {
           console.error(`❌ Failed to add large message to graph:`, (graphError as any).message);
         }
       }
       
+      // Save updated UUID tracking file
+      await saveStoredUuids(hookData.session_id, storedUuids);
+      
       console.log(`✅ TemporalBridge: ${shortMessages.length} thread + ${largeMessages.length} graph messages stored in user graph`);
       console.log(`📊 Project: ${projectContext.projectName} (${projectContext.groupId})`);
+      console.log(`🔒 Tracked ${storedUuids.size} stored message UUIDs`);
       
       if (projectEntityResult?.success) {
         console.log(`🏗️  Project Entity: ${projectEntityResult.technologiesDetected} technologies, ${projectEntityResult.relationships?.length || 0} relationships`);
