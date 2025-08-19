@@ -6,8 +6,8 @@
  */
 
 import type { HookData, TranscriptMessage, ParsedMessage } from "../lib/types.ts";
-import { createZepClient, ensureUser, ensureThread } from "../lib/zep-client.ts";
-import { detectProject, getScopedUserId } from "../lib/project-detector.ts";
+import { createZepClient, ensureUser, ensureThread, getDefaultConfigAsync } from "../lib/zep-client.ts";
+import { detectProject } from "../lib/project-detector.ts";
 
 function findCurrentTransaction(parsedMessages: ParsedMessage[], rawMessages: TranscriptMessage[]): ParsedMessage[] {
   if (parsedMessages.length === 0) return [];
@@ -137,10 +137,11 @@ async function storeConversation(hookData: HookData): Promise<void> {
     }
   }
 
-  // Detect project context from working directory
-  const projectContext = await detectProject(hookData.cwd);
-  const userId = getScopedUserId("developer", projectContext);
-  const threadId = `claude-code-${projectContext.projectId}-${hookData.session_id}`;
+  // Get configuration with simplified user ID and project context
+  const config = await getDefaultConfigAsync();
+  const projectContext = config.projectContext || await detectProject(hookData.cwd);
+  const userId = config.userId || "developer"; // Simple developer ID, no project scoping
+  const threadId = `claude-code-${hookData.session_id}`; // Session-based thread ID
 
   // Ensure user and thread exist
   await ensureUser(client, userId);
@@ -170,8 +171,9 @@ async function storeConversation(hookData: HookData): Promise<void> {
     session_id: hookData.session_id,
     hook_event: hookData.hook_event_name,
     project_context: projectContext,
-    scoped_user_id: userId,
-    scoped_thread_id: threadId,
+    user_id: userId,
+    thread_id: threadId,
+    storage_architecture: "user_graph_with_project_metadata",
     total_messages_parsed: messages.length,
     current_transaction_messages: transactionMessages.length,
     all_messages: messages,
@@ -207,10 +209,10 @@ async function storeConversation(hookData: HookData): Promise<void> {
         await client.thread.addMessages(threadId, {
           messages: shortMessages as any,
         });
-        console.log(`✅ Sent ${shortMessages.length} short messages to thread`);
+        console.log(`✅ Sent ${shortMessages.length} short messages to user thread`);
       }
       
-      // Add large messages using graph.add API
+      // Add large messages using graph.add API with project metadata
       for (const msg of largeMessages) {
         try {
           await client.graph.add({
@@ -218,13 +220,14 @@ async function storeConversation(hookData: HookData): Promise<void> {
             type: "message",
             data: `${msg.name}: ${msg.content}`,
           });
-          console.log(`✅ Sent large message (${msg.content.length} chars) to graph`);
+          console.log(`✅ Sent large message (${msg.content.length} chars) to user graph`);
         } catch (graphError) {
           console.error(`❌ Failed to add large message to graph:`, (graphError as any).message);
         }
       }
       
-      console.log(`✅ TemporalBridge: ${shortMessages.length} thread + ${largeMessages.length} graph messages stored`);
+      console.log(`✅ TemporalBridge: ${shortMessages.length} thread + ${largeMessages.length} graph messages stored in user graph`);
+      console.log(`📊 Project: ${projectContext.projectName} (${projectContext.groupId})`);
     } catch (addMessagesError) {
       console.error(`❌ Failed to add transaction messages:`, addMessagesError);
       throw addMessagesError;

@@ -429,3 +429,246 @@ export async function retrieveMemory(options: UnifiedMemoryQuery = {}): Promise<
     throw error;
   }
 }
+
+/**
+ * Search project group graph for shared knowledge
+ */
+export async function searchProjectMemory(
+  query: string,
+  groupId: string,
+  scope: "edges" | "nodes" | "episodes" = "edges",
+  limit = 10,
+  reranker: 'cross_encoder' | 'none' = 'cross_encoder'
+): Promise<MemorySearchResult[]> {
+  const client = createZepClient();
+  
+  try {
+    const searchResults = await (client.graph as any).search({
+      groupId,
+      query,
+      scope,
+      reranker: reranker === 'none' ? undefined : reranker,
+      limit
+    });
+
+    if (!searchResults) {
+      return [];
+    }
+
+    const results: MemorySearchResult[] = [];
+
+    // Process edges (facts/relationships)
+    if (searchResults.edges) {
+      for (const edge of searchResults.edges) {
+        results.push({
+          content: edge.fact || edge.name || "Unknown fact",
+          score: edge.score || 0,
+          type: "edge",
+          created_at: edge.createdAt,
+          metadata: {
+            scope: "group_edges",
+            uuid: edge.uuid,
+            source: "project_knowledge",
+            groupId,
+            fact: edge.fact,
+            sourceNode: (edge as any).sourceNodeName,
+            targetNode: (edge as any).targetNodeName
+          }
+        });
+      }
+    }
+
+    // Process nodes (entities)
+    if (searchResults.nodes) {
+      for (const node of searchResults.nodes) {
+        results.push({
+          content: node.summary || node.name || "Unknown entity",
+          score: node.score || 0,
+          type: "node",
+          created_at: node.createdAt,
+          metadata: {
+            scope: "group_nodes",
+            uuid: node.uuid,
+            source: "project_entities",
+            groupId,
+            name: node.name,
+            summary: node.summary
+          }
+        });
+      }
+    }
+
+    // Process episodes (conversations)
+    if (searchResults.episodes) {
+      for (const episode of searchResults.episodes) {
+        results.push({
+          content: episode.content || "Episode content",
+          score: episode.score || 0,
+          type: "episode",
+          created_at: episode.createdAt,
+          metadata: {
+            scope: "group_episodes",
+            uuid: episode.uuid,
+            source: "project_conversations",
+            groupId,
+            processed: episode.processed,
+            role_type: episode.roleType
+          }
+        });
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error("❌ Error searching project memory:", error);
+    return [];
+  }
+}
+
+/**
+ * Add content to project group graph
+ */
+export async function addToProjectGroup(
+  groupId: string,
+  content: string,
+  metadata?: Record<string, unknown>
+): Promise<void> {
+  const client = createZepClient();
+  
+  try {
+    await (client.graph as any).add({
+      groupId,
+      type: "text",
+      data: content,
+      ...(metadata && { metadata })
+    });
+  } catch (error) {
+    console.error("❌ Error adding to project group:", error);
+    throw error;
+  }
+}
+
+/**
+ * Ensure project group exists, create if needed
+ */
+export async function ensureProjectGroup(groupId: string, projectName: string): Promise<void> {
+  const client = createZepClient();
+  
+  try {
+    // Try to check if group exists by searching it
+    await (client.graph as any).search({
+      groupId,
+      query: "test",
+      limit: 1
+    });
+    // If no error, group exists
+  } catch (error) {
+    // If 404 or similar, group doesn't exist, create it
+    if ((error as any).status === 404 || (error as any).statusCode === 404) {
+      try {
+        await (client.graph as any).create({
+          groupId,
+          name: projectName,
+          metadata: {
+            createdBy: "temporal-bridge",
+            projectName,
+            type: "project_knowledge"
+          }
+        });
+        console.log(`✅ Created project group: ${groupId}`);
+      } catch (createError) {
+        // Group might have been created between check and create
+        if (!(createError as any).message?.includes("already exists")) {
+          throw createError;
+        }
+      }
+    } else {
+      // Some other error, re-throw
+      throw error;
+    }
+  }
+}
+
+/**
+ * Share knowledge to project group graph
+ */
+export async function shareToProjectGroup(
+  message: string,
+  projectName?: string
+): Promise<{ success: boolean; message: string; groupId?: string }> {
+  try {
+    // Validate input
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      throw new Error("Message is required and cannot be empty");
+    }
+    
+    if (message.trim().length > 10000) {
+      throw new Error("Message is too long (max 10,000 characters)");
+    }
+    
+    // Get project context
+    const config = await getDefaultConfigAsync();
+    
+    if (!config.projectContext) {
+      throw new Error("No project context available. Make sure you're in a project directory.");
+    }
+    
+    // Validate project name if provided
+    if (projectName && (typeof projectName !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(projectName))) {
+      throw new Error("Invalid project name. Must contain only letters, numbers, hyphens, and underscores.");
+    }
+    
+    const targetGroupId = projectName ? 
+      `project-${projectName}` : 
+      config.projectContext.groupId;
+    
+    const targetProjectName = projectName || config.projectContext.projectName;
+    
+    // Ensure group exists
+    await ensureProjectGroup(targetGroupId, targetProjectName);
+    
+    // Add timestamp and attribution
+    const timestampedMessage = `[${new Date().toISOString()}] ${message}`;
+    
+    // Add to project group
+    await addToProjectGroup(targetGroupId, timestampedMessage, {
+      sharedBy: config.userId,
+      projectName: projectName || config.projectContext.projectName,
+      timestamp: new Date().toISOString(),
+      type: "shared_knowledge"
+    });
+    
+    return {
+      success: true,
+      message: `✅ Knowledge shared to project: ${targetProjectName}\n📝 Message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"\n🔗 Group ID: ${targetGroupId}\n👤 Shared by: ${config.userId}`,
+      groupId: targetGroupId
+    };
+    
+  } catch (error) {
+    console.error("❌ Error sharing to project group:", error);
+    return {
+      success: false,
+      message: `❌ Failed to share knowledge: ${(error as any).message}`
+    };
+  }
+}
+
+/**
+ * Search both user and project graphs (combined search)
+ */
+export async function searchBothGraphs(
+  query: string,
+  groupId?: string,
+  limit = 5
+): Promise<{ personal: MemorySearchResult[]; project: MemorySearchResult[] }> {
+  const personalResults = await searchMemory(query, "edges", limit);
+  const projectResults = groupId ? 
+    await searchProjectMemory(query, groupId, "edges", limit) : 
+    [];
+
+  return {
+    personal: personalResults,
+    project: projectResults
+  };
+}
+

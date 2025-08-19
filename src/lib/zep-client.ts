@@ -44,36 +44,11 @@ async function getCachedProjectContext(): Promise<ProjectContext> {
 
 /**
  * Get default configuration for Zep operations
- * Uses project-specific user ID for memory isolation
- * 
- * NOTE: This function is synchronous for backward compatibility.
- * For accurate project detection, use getDefaultConfigAsync() instead.
+ * Uses simple developer ID (no project scoping)
  */
 export function getDefaultConfig(): ZepConfig {
-  const baseUserId = "developer";
-  
-  // Check for explicit user ID override first
-  const explicitUserId = Deno.env.get("ZEP_USER_ID");
-  if (explicitUserId) {
-    return {
-      apiKey: Deno.env.get("ZEP_API_KEY") || "",
-      userId: explicitUserId,
-      defaultLimit: 10,
-      defaultScope: "edges"
-    };
-  }
-  
-  // For synchronous compatibility, use the cached context if available
-  let userId = baseUserId;
-  
-  if (cachedProjectContext && cacheKey === (Deno.env.get("PROJECT_DIR") || Deno.cwd())) {
-    userId = getScopedUserId(baseUserId, cachedProjectContext);
-  } else {
-    // Fallback: must remain sync, so we can't use detectProject here
-    // This maintains backward compatibility but may be inaccurate for monorepos
-    console.warn("[zep-client] Sync getDefaultConfig() called before async initialization. User ID may be inaccurate for monorepos.");
-    userId = baseUserId; // Safe fallback
-  }
+  // Use DEVELOPER_ID env var or default to "developer"
+  const userId = Deno.env.get("DEVELOPER_ID") || "developer";
   
   return {
     apiKey: Deno.env.get("ZEP_API_KEY") || "",
@@ -84,32 +59,22 @@ export function getDefaultConfig(): ZepConfig {
 }
 
 /**
- * Get default configuration with async project detection
- * Preferred over getDefaultConfig() for accurate project detection
+ * Get default configuration with project context
+ * Returns both user config and project context for group graph operations
  */
-export async function getDefaultConfigAsync(): Promise<ZepConfig> {
-  const baseUserId = "developer";
+export async function getDefaultConfigAsync(): Promise<ZepConfig & { projectContext?: ProjectContext }> {
+  // Use DEVELOPER_ID env var or default to "developer"
+  const userId = Deno.env.get("DEVELOPER_ID") || "developer";
   
-  // Check for explicit user ID override first
-  const explicitUserId = Deno.env.get("ZEP_USER_ID");
-  if (explicitUserId) {
-    return {
-      apiKey: Deno.env.get("ZEP_API_KEY") || "",
-      userId: explicitUserId,
-      defaultLimit: 10,
-      defaultScope: "edges"
-    };
-  }
-  
-  // Use full project detection
+  // Get project context for group operations
   const projectContext = await getCachedProjectContext();
-  const userId = getScopedUserId(baseUserId, projectContext);
   
   return {
     apiKey: Deno.env.get("ZEP_API_KEY") || "",
     userId,
     defaultLimit: 10,
-    defaultScope: "edges"
+    defaultScope: "edges",
+    projectContext
   };
 }
 

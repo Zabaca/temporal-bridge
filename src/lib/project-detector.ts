@@ -9,8 +9,10 @@ import { existsSync } from "https://deno.land/std@0.220.1/fs/mod.ts";
 import { dirname, basename, resolve } from "https://deno.land/std@0.220.1/path/mod.ts";
 
 export interface ProjectContext {
-  /** Unique project identifier for Zep user scoping */
+  /** Unique project identifier for Zep group scoping */
   projectId: string;
+  /** Group ID for Zep group graphs */
+  groupId: string;
   /** Full path to project root */
   projectPath: string;
   /** Git remote URL if available */
@@ -169,8 +171,12 @@ export async function detectProject(workingDir: string = Deno.cwd()): Promise<Pr
     const projectName = projectConfig.name || pathStructure.name;
     const organization = projectConfig.organization || pathStructure.organization;
     
+    const projectId = generateProjectId({ organization, projectName });
+    // Allow manual GROUP_ID override via environment variable
+    const groupId = Deno.env.get("GROUP_ID") || `project-${projectId}`;
     const context: ProjectContext = {
-      projectId: generateProjectId({ organization, projectName }),
+      projectId,
+      groupId,
       projectPath: gitRoot,
       projectName,
       gitRemote: gitRemote || undefined,
@@ -188,8 +194,12 @@ export async function detectProject(workingDir: string = Deno.cwd()): Promise<Pr
   const projectName = projectConfig.name || pathStructure.name;
   const organization = projectConfig.organization || pathStructure.organization;
   
+  const projectId = generateProjectId({ organization, projectName });
+  // Allow manual GROUP_ID override via environment variable
+  const groupId = Deno.env.get("GROUP_ID") || `project-${projectId}`;
   return {
-    projectId: generateProjectId({ organization, projectName }),
+    projectId,
+    groupId,
     projectPath: resolvedPath,
     projectName,
     projectType: 'directory',
@@ -199,8 +209,11 @@ export async function detectProject(workingDir: string = Deno.cwd()): Promise<Pr
 
 /**
  * Get scoped user ID for Zep based on project context
+ * @deprecated Use simple user ID instead of project-scoped IDs
+ * This function is kept for backward compatibility but should not be used in new code
  */
 export function getScopedUserId(baseUserId: string, projectContext: ProjectContext): string {
+  console.warn("⚠️  getScopedUserId is deprecated. Use simple user ID from getDefaultConfig() instead.");
   return `${baseUserId}-${projectContext.projectId}`;
 }
 

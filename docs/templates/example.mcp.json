@@ -1,0 +1,48 @@
+{
+  "$comment": "Example MCP Configuration for projects using TemporalBridge",
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/specification/main/schema/mcp.schema.json",
+  "mcpServers": {
+    "temporal-bridge": {
+      "type": "stdio",
+      "command": "deno",
+      "args": [
+        "run",
+        "--allow-env",
+        "--allow-net",
+        "--allow-read",
+        "~/Projects/zabaca/temporal-bridge/src/mcp-server.ts"
+      ],
+      "cwd": "~/Projects/zabaca/temporal-bridge",
+      "env": {
+        "ZEP_API_KEY": "${ZEP_API_KEY}",
+        "PROJECT_DIR": "${PWD}",
+        "DEVELOPER_ID": "${USER:-developer}",
+        "GROUP_ID": "optional-custom-group-name"
+      }
+    },
+    "zep-docs": {
+      "type": "sse",
+      "url": "https://docs-mcp.getzep.com/sse",
+      "description": "Official Zep documentation (optional)"
+    }
+  },
+  "description": {
+    "setup": "To use TemporalBridge in your project:",
+    "steps": [
+      "1. Copy this file to your project root as .mcp.json",
+      "2. Update the 'cwd' path to point to your temporal-bridge installation",
+      "3. Set ZEP_API_KEY environment variable with your Zep Cloud API key",
+      "4. Optional: Set DEVELOPER_ID to customize your user identifier (default: 'developer')",
+      "5. Optional: Set GROUP_ID to override auto-generated project group name",
+      "6. Start Claude Code in your project directory"
+    ],
+    "architecture": "User Graph Architecture",
+    "storage": "All conversations stored in single user graph with project metadata",
+    "sharing": "Use share_knowledge tool to copy knowledge to project groups",
+    "search_tools": [
+      "search_personal - Your personal memories only",
+      "search_project - Shared project knowledge only", 
+      "search_all - Both personal and project memories"
+    ]
+  }
+}

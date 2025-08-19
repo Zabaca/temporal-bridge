@@ -95,15 +95,24 @@ ls -la /home/uptown/.claude/hooks/
 # Required
 ZEP_API_KEY=your_zep_api_key_here
 
-# Optional - User ID for Zep operations
-TEMPORAL_BRIDGE_USER_ID=developer
+# Optional - Developer identifier (default: "developer")
+DEVELOPER_ID=your_name
 
-# Optional - Default search scope
-TEMPORAL_BRIDGE_DEFAULT_SCOPE=edges  # edges|nodes|episodes
+# Optional - Override auto-detected project group ID
+GROUP_ID=custom-project-group-name
 
-# Optional - Default result limit
-TEMPORAL_BRIDGE_DEFAULT_LIMIT=10
+# Optional - Project directory (usually auto-detected)
+PROJECT_DIR=/path/to/your/project
 ```
+
+### New User Graph Architecture
+
+TemporalBridge now uses a simplified architecture:
+
+- **User Graph**: All conversations stored under single developer ID
+- **Project Groups**: Shared knowledge stored in project-specific groups  
+- **Manual Sharing**: Use `share_knowledge` tool to copy insights to project groups
+- **Smart Search**: New search tools for personal vs. project vs. combined search
 
 ### Deno Configuration
 

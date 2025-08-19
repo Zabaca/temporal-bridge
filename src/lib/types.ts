@@ -54,4 +54,13 @@ export interface ZepConfig {
   userId?: string;
   defaultLimit?: number;
   defaultScope?: 'edges' | 'nodes' | 'episodes';
+  projectContext?: {
+    projectId: string;
+    groupId: string;
+    projectPath: string;
+    projectName: string;
+    projectType: 'git' | 'directory' | 'unknown';
+    gitRemote?: string;
+    organization?: string;
+  };
 }

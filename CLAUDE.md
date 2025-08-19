@@ -1,29 +1,47 @@
 # TemporalBridge - Claude Project Configuration
 
 ## Project Overview
-TemporalBridge is an AI memory system that creates searchable, temporal knowledge graphs from Claude Code conversations using Zep. It bridges conversations across time, providing persistent memory that learns and evolves.
+TemporalBridge is an AI memory system that creates searchable, temporal knowledge graphs from Claude Code conversations using Zep. It implements a **User Graph Architecture** where personal conversations are stored in your user graph, and shared knowledge is manually curated into project groups.
 
 **Location**: `~/Projects/zabaca/temporal-bridge/`  
 **Purpose**: AI memory management and search for Claude Code sessions  
-**Tech Stack**: Deno, TypeScript, Zep Cloud API
+**Tech Stack**: Deno, TypeScript, Zep Cloud API  
+**Architecture**: User Graph with Project Group sharing
 
-## Key Components
+## User Graph Architecture
 
-### Core Scripts
-- `src/retrieve_memory.ts` - Memory search and retrieval CLI
-- `src/hooks/store_conversation.ts` - Conversation storage hook
-- `src/lib/types.ts` - Shared TypeScript interfaces
-- `src/lib/zep-client.ts` - Zep client utilities
+### Storage Strategy
+- **User Graph**: All conversations stored under single developer ID (`developer`)
+- **Project Groups**: Shared knowledge manually curated via `/share-knowledge` command
+- **Clean Separation**: Personal learnings vs. team knowledge
+- **Manual Curation**: Deliberate knowledge sharing prevents noise
+
+### Key Benefits
+- ✅ **Simplified Identity**: Single user ID across all projects
+- ✅ **Privacy by Default**: Personal conversations stay private
+- ✅ **Intentional Sharing**: Only valuable insights reach team knowledge
+- ✅ **Cross-Project Learning**: Personal patterns span multiple projects
+- ✅ **Flexible Search**: Choose personal, project, or combined search
+
+## Core Components
+
+### Storage & Hooks
+- `src/hooks/store_conversation.ts` - Stores all conversations in user graph
+- `src/lib/project-detector.ts` - Detects project context for metadata
+- `src/lib/zep-client.ts` - Simplified user ID management
+
+### Memory Tools
+- `src/lib/memory-tools.ts` - Personal and project search functions
+- `src/mcp-server.ts` - MCP tools for direct Claude integration
+- `src/retrieve_memory.ts` - CLI search interface
 
 ### Available Commands
 ```bash
 # Navigate to project
 cd ~/Projects/zabaca/temporal-bridge
 
-# Search memories
-deno task search --query "concept" --scope edges|nodes|episodes
-deno task search --thread "claude-code-session-id" 
-deno task search --help
+# Search personal memories
+deno task search --query "debugging approaches" --scope episodes
 
 # Development
 deno task check    # Type checking
@@ -31,217 +49,226 @@ deno task fmt      # Format code
 deno task lint     # Lint code
 ```
 
-## Memory Search Patterns
+## New MCP Tools (User Graph Architecture)
 
-### Search Scopes
-- **edges**: Relationships and facts ("developer USES TypeScript")
-- **nodes**: Entities with AI-generated summaries  
-- **episodes**: Raw conversation content
+### Personal Knowledge Search
+- **`search_personal`** - Search your personal conversation history only
+- **Use for**: "What debugging techniques have I used?", "My preferences for testing"
 
-### Common Queries
-```bash
-# Find technical relationships
-deno task search --query "debugging approaches" --scope edges
+### Project Knowledge Search  
+- **`search_project`** - Search shared project knowledge only
+- **Use for**: "What architecture decisions has the team made?", "Project conventions"
 
-# Get entity summaries  
-deno task search --query "developer" --scope nodes
+### Combined Search
+- **`search_all`** - Search both personal and project memories with source labels
+- **Use for**: "What do I know about React patterns?" (gets both personal experience and team decisions)
 
-# Search conversation history
-deno task search --query "project architecture" --scope episodes
+### Knowledge Sharing
+- **`share_knowledge`** - Copy insights from personal conversations to project groups
+- **Use for**: Sharing valuable learnings, decisions, patterns with the team
 
-# Thread-specific context
-deno task search --thread "claude-code-f381f5fb-b0dd-4e66-8e82-5764e505579c"
-```
+### Context & History
+- **`get_thread_context`** - Get comprehensive context for specific conversation threads
+- **`get_recent_episodes`** - Get recent conversation episodes for continuity
+- **`get_current_context`** - Get current session context automatically
 
 ## Integration Status
 
 ### Claude Code Hook
-- **Status**: ✅ Active via Deno task integration
-- **Trigger**: `cd ~/Projects/zabaca/temporal-bridge && deno task hook`
-- **Storage**: Short messages → thread, Large messages → graph
+- **Status**: ✅ Active - stores all conversations in user graph
+- **Trigger**: Automatic via conversation hooks
+- **Storage**: All messages → user graph with project metadata
 - **Debug Files**: `/home/uptown/.claude/temporal-bridge-debug-*.json`
-- **Project Detection**: Uses `project-detector.ts` for consistent user ID generation
+- **Thread IDs**: Simplified to `claude-code-{session-id}`
 
 ### MCP Server Integration
-- **Status**: ✅ Configured for direct memory access
-- **Servers**: 
-  - `zep-docs`: Zep documentation via SSE
-  - `temporal-bridge`: Direct memory search tools
-- **Tools Available**:
-  - `search_facts`: Search relationships and facts
-  - `search_memory`: Search episodes/entities/content
-  - `get_thread_context`: Get comprehensive thread context
+- **Status**: ✅ Configured for new architecture
 - **Configuration**: `.mcp.json` in project root
+- **Tools**: 6 new tools replacing old search methods
+- **Architecture**: User graph storage with project group sharing
 
-### Environment
-- **Required**: `ZEP_API_KEY` (set in project `.env`)
-- **User ID**: `developer` (default)
-- **Thread Pattern**: `claude-code-{session-id}`
-
-## Development Guidelines
-
-### When Working on TemporalBridge
-1. **Always run from project directory**: `cd ~/Projects/zabaca/temporal-bridge`
-2. **Test changes**: `deno task check` before committing
-3. **Search functionality**: Test with `deno task search` after changes
-4. **Hook integration**: Verify via debug files after conversations
-
-### Memory Usage Patterns
-- **Reference past work**: Search before implementing similar features
-- **Context building**: Use thread searches for session continuity  
-- **Knowledge discovery**: Explore nodes for concept relationships
-- **Problem solving**: Search episodes for similar issues
-
-## Zep Integration Details
-
-### API Endpoints Used
-- `client.graph.search()` - Knowledge graph search
-- `client.thread.getUserContext()` - Thread context retrieval
-- `client.thread.addMessages()` - Short message storage
-- `client.graph.add()` - Large message/episode storage
-
-### Search Response Structure
-```typescript
-// Edges: Relationships
-{ edge: { fact: string, score: number, createdAt: string } }
-
-// Nodes: Entities  
-{ node: { name: string, summary: string, score: number } }
-
-// Episodes: Conversations
-{ episode: { content: string, processed: boolean, roleType: string } }
-```
-
-## MCP Tool Usage
-
-### For Claude (via MCP tools)
-```typescript
-// I can now call these directly during conversations:
-search_facts("TypeScript preferences")
-search_memory("debugging approaches", "episodes") 
-get_thread_context("claude-code-session-id")
-```
-
-### For CLI usage
+### Environment Configuration
 ```bash
-deno task search --query "topic" --scope edges|nodes|episodes
-deno task mcp  # Start MCP server manually
+# Required
+ZEP_API_KEY=your_zep_api_key_here
+
+# Optional
+DEVELOPER_ID=your_name              # Default: "developer"
+GROUP_ID=custom-project-group       # Default: auto-generated
+PROJECT_DIR=/path/to/project        # Default: current directory
 ```
 
-## Current Limitations
-- CLI search returns max 300 chars (see `retrieve_memory.ts:287`)
-- Hook debug logging creates files in `.claude/` directory
-- Some API responses use `any` types for Zep SDK compatibility
-- Legacy user IDs may require `ZEP_USER_ID` override in `.mcp.json`
+## Memory Usage Patterns
 
-## Enhanced Capabilities
-- ✅ Direct memory tool access via MCP
-- ✅ Structured JSON responses for all operations
-- ✅ Multi-scope search (edges, nodes, episodes)
-- ✅ Thread context summaries
-- ✅ Project-specific Zep documentation access
+### When to Use Each Search Tool
 
-## AI Coding Assistant Documentation
+**`search_personal`** - Your personal knowledge only:
+- "What patterns have I learned for error handling?"
+- "My debugging approaches that worked well"
+- "Personal preferences and habits"
 
-### Zep Documentation Reference
-Local copy of Zep's comprehensive documentation index available at:
-- **File**: `docs/zep-llms.txt`
-- **Source**: `https://help.getzep.com/llms.txt`
+**`search_project`** - Shared team knowledge only:
+- "What conventions has the team established?"
+- "Architecture decisions we've made"
+- "Shared patterns and best practices"
 
-**Documentation Coverage:**
-- **Core Concepts**: Context engineering, temporal knowledge graphs, memory management
-- **API References**: Complete SDK documentation for threads, users, graph operations  
-- **Integration Guides**: LangGraph, Autogen, and ecosystem integrations
-- **Migration Guides**: v2 to v3 platform upgrades, Mem0 migration
-- **Performance**: Optimization patterns and best practices
-- **Graphiti**: Open-source temporal knowledge graph library
+**`search_all`** - Comprehensive search:
+- "Everything I know about React components"
+- "All context about database design" 
+- "Complete picture of testing approaches"
 
-**For AI Development:**
-- Reference local `docs/zep-llms.txt` for complete API coverage
-- Use Zep docs MCP server (`mcp__zep-docs__search_documentation`) for real-time documentation access
-- Leverage both current (v3) and legacy (v2) documentation as needed
+**`share_knowledge`** - Curate team knowledge:
+- Share valuable insights: "We decided to use TypeScript strict mode for better type safety"
+- Document decisions: "Authentication flow should use JWT with refresh tokens"
+- Preserve lessons learned: "Memory leaks in React occur when event listeners aren't cleaned up"
 
-### Development Context
-When working on TemporalBridge enhancements:
-1. **Check local docs first** - Reference `docs/zep-llms.txt` for comprehensive API coverage
-2. **Search Zep docs** via MCP tools for implementation patterns and examples
-3. **Use memory search** to understand past implementation decisions and patterns
-4. **Follow Zep best practices** from official documentation for optimal performance
+## Proactive Memory Usage
 
-## Intelligent Memory Usage Instructions
+### ALWAYS automatically search memory when:
 
-### Active MCP Tools Available
-**TemporalBridge MCP Server provides these tools:**
-- `mcp__temporal-bridge__search_facts(query, limit, min_rating, reranker)` - Search relationships and facts
-- `mcp__temporal-bridge__search_memory(query, scope, limit, reranker)` - Search episodes/entities/content  
-- `mcp__temporal-bridge__get_thread_context(thread_id, min_rating)` - Get comprehensive thread context
-- `mcp__temporal-bridge__get_recent_episodes(limit)` - Get recent conversation episodes
-
-### Proactive Memory Usage Patterns
-
-**ALWAYS automatically search memory when:**
-
-1. **Starting any conversation** - Get context continuity:
+1. **Starting conversations** - Get context continuity:
    ```typescript
    mcp__temporal-bridge__get_recent_episodes(5)
    ```
 
-2. **Technical questions or problems** - Find related solutions:
-   ```typescript  
-   mcp__temporal-bridge__search_memory("problem keywords", "episodes", 3)
-   mcp__temporal-bridge__search_facts("solution approaches", 3)
-   ```
-
-3. **Code implementation requests** - Look for past patterns:
+2. **Technical questions** - Find related solutions:
    ```typescript
-   mcp__temporal-bridge__search_memory("implementation topic", "episodes", 5) 
-   mcp__temporal-bridge__search_facts("coding patterns", 3)
+   mcp__temporal-bridge__search_all("error handling patterns", 5)
    ```
 
-4. **Debugging or error resolution** - Reference past debugging sessions:
+3. **Implementation requests** - Look for past patterns:
    ```typescript
-   mcp__temporal-bridge__search_memory("error type debugging", "episodes", 3)
-   mcp__temporal-bridge__search_facts("debugging approaches", 5)
+   mcp__temporal-bridge__search_personal("similar implementation", 5)
+   mcp__temporal-bridge__search_project("team patterns", 3)
    ```
 
-5. **Project-specific work** - Auto-retrieve project context:
+4. **Debugging issues** - Reference past solutions:
    ```typescript
-   mcp__temporal-bridge__search_memory("project name", "edges", 5)
-   mcp__temporal-bridge__search_facts("project architecture", 3)  
+   mcp__temporal-bridge__search_all("debugging approaches", 5)
    ```
 
-### Memory Integration Guidelines
+5. **Project-specific work** - Get relevant context:
+   ```typescript
+   mcp__temporal-bridge__search_project("project architecture", 5)
+   ```
 
-1. **Search First, Respond Second** - Always check memory before providing answers
-2. **Seamless Integration** - Weave memory findings naturally into responses
-3. **Don't Mention Searches** - Unless the memory search process itself is relevant to the conversation
-4. **Prioritize Recent Context** - Use `get_recent_episodes` for session continuity
-5. **Use Appropriate Scope**:
-   - `episodes` for conversation history and detailed context
-   - `edges` for relationships, facts, and technical patterns  
-   - `nodes` for entity summaries and concept overviews
+## Development Guidelines
 
-### MCP Server Limitations & Improvements Needed
+### When Working on TemporalBridge
+1. **Run from project directory**: `cd ~/Projects/zabaca/temporal-bridge`
+2. **Test changes**: `deno task check` before committing
+3. **Verify MCP tools**: Test new search tools after changes
+4. **Check hook storage**: Verify conversations stored in user graph
 
-**Current Limitations:**
-1. **No Auto-Trigger Capability** - MCP server can't automatically detect when to search based on message content
-2. **Limited Session Awareness** - Cannot automatically identify current thread ID for context retrieval  
-3. **Fixed Result Limits** - Cannot dynamically adjust search depth based on query complexity
+### Knowledge Curation Workflow
+1. **Develop personally** - All conversations stored in your user graph
+2. **Identify insights** - Notice valuable patterns, decisions, learnings
+3. **Share deliberately** - Use `share_knowledge` to copy to project group
+4. **Search comprehensively** - Use `search_all` for complete context
 
-**Advanced Search Capabilities (Already Working):**
-- ✅ **Semantic Similarity Search** - Zep converts queries to embeddings for conceptual matches
-- ✅ **Hybrid Search Strategy** - Combines BM25 full-text + semantic embeddings + reranking
-- ✅ **Cross Encoder Reranking** - Advanced relevance scoring (0-1 range) for precise results
-- ✅ **Multi-Algorithm Fusion** - Reciprocal Rank Fusion combines different search approaches
+## Advanced Capabilities
 
-**Suggested Improvements:**
-1. **Add Message Analysis Tool** - `analyze_message_for_memory_triggers(message)` that returns suggested searches
-2. **Session Context Tool** - `get_current_session_context()` that automatically uses current thread ID
-3. **Smart Search Tool** - `intelligent_search(message, context)` that combines multiple search strategies
-4. **Memory Relevance Scoring** - Enhanced ranking of memory results by contextual relevance
+### Semantic Search Features
+- ✅ **Hybrid Search** - Combines BM25 full-text + semantic embeddings
+- ✅ **Cross Encoder Reranking** - Advanced relevance scoring
+- ✅ **Multi-Algorithm Fusion** - Optimal result ranking
+- ✅ **Project Context Awareness** - Automatic project detection
 
-**For now, rely on manual pattern recognition and the proactive search patterns above to provide intelligent memory-enhanced responses.**
+### Architecture Benefits
+- ✅ **Single User Identity** - No more project-scoped user IDs
+- ✅ **Manual Knowledge Curation** - Intentional team knowledge building
+- ✅ **Privacy by Default** - Personal conversations stay private
+- ✅ **Flexible Search Options** - Personal, project, or combined search
+- ✅ **Cross-Project Learning** - Personal patterns span all projects
+
+## Search Response Structure
+
+### Personal Search Results
+```typescript
+{
+  "source": "personal",
+  "results": [
+    {
+      "content": "Your personal insight or pattern",
+      "score": 0.95,
+      "type": "episode",
+      "metadata": { "scope": "personal", "project": "context" }
+    }
+  ]
+}
+```
+
+### Project Search Results
+```typescript
+{
+  "source": "project", 
+  "project": "temporal-bridge",
+  "groupId": "project-zabaca-temporal-bridge",
+  "results": [
+    {
+      "content": "Shared team knowledge",
+      "score": 0.87,
+      "type": "edge",
+      "metadata": { "scope": "group_edges", "sharedBy": "developer" }
+    }
+  ]
+}
+```
+
+### Combined Search Results
+```typescript
+{
+  "query": "React patterns",
+  "project": "temporal-bridge", 
+  "personal": [...], // Your personal React experience
+  "project_results": [...] // Team's React decisions
+}
+```
+
+## Memory Integration Guidelines
+
+1. **Search First, Respond Second** - Check memory before answering
+2. **Seamless Integration** - Weave findings naturally into responses  
+3. **Source Awareness** - Distinguish personal vs. project knowledge
+4. **Context Building** - Use recent episodes for conversation continuity
+5. **Intentional Sharing** - Curate valuable insights to project groups
+
+## Migration from Legacy Architecture
+
+### What Changed
+- **User IDs**: Project-scoped IDs → Single developer ID
+- **Storage**: Automatic project routing → User graph with metadata
+- **Sharing**: Automatic → Manual via `share_knowledge` tool
+- **Search**: Generic tools → Specialized personal/project/combined tools
+
+### Legacy Tools (Removed)
+- ~~`search_facts`~~ → Use `search_personal`, `search_project`, or `search_all`
+- ~~`search_memory`~~ → Use new specialized search tools
+- ~~Project-scoped user IDs~~ → Single `DEVELOPER_ID`
+
+### Environment Variables (Updated)
+- ~~`ZEP_USER_ID`~~ → `DEVELOPER_ID`
+- **New**: `GROUP_ID` for custom project group names
+- **Simplified**: No more complex project-scoped configurations
+
+## AI Coding Assistant Instructions
+
+### Memory-Enhanced Development
+1. **Always search first** - Use memory tools before answering technical questions
+2. **Build on past work** - Reference previous implementations and decisions
+3. **Share valuable insights** - Use `share_knowledge` for team-worthy discoveries
+4. **Maintain context** - Use `get_recent_episodes` for conversation continuity
+5. **Choose appropriate scope** - Personal for your experience, project for team knowledge
+
+### Automatic Memory Integration
+TemporalBridge automatically:
+- Stores all conversations in your user graph
+- Adds project metadata for context
+- Enables cross-project learning
+- Provides tools for deliberate knowledge sharing
+
+**Use the MCP tools proactively to provide context-aware, memory-enhanced assistance across all development tasks.**
 
 ---
 
-**Note**: This system automatically captures and stores our current conversation. Use the MCP tools above to proactively search and integrate our growing knowledge graph into all responses.
+**Note**: This system stores all conversations in your personal user graph. Use `share_knowledge` to deliberately share valuable insights with project teams.

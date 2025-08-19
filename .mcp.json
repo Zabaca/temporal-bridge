@@ -1,4 +1,5 @@
 {
+  "$comment": "TemporalBridge MCP Configuration - User Graph Architecture",
   "mcpServers": {
     "zep-docs": {
       "type": "sse",
@@ -17,7 +18,8 @@
       "cwd": "/home/uptown/Projects/zabaca/temporal-bridge",
       "env": {
         "ZEP_API_KEY": "${ZEP_API_KEY}",
-        "PROJECT_DIR": "${PWD}"
+        "PROJECT_DIR": "${PWD}",
+        "DEVELOPER_ID": "${USER:-developer}"
       }
     }
   }
