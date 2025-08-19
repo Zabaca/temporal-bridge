@@ -104,12 +104,11 @@ export async function getCurrentSessionId(projectPath: string): Promise<string |
 }
 
 /**
- * Check if project entity was processed recently for this session
+ * Check if project entity should be processed for this session
  */
 export async function shouldProcessProjectEntity(
   projectPath: string,
-  sessionId: string,
-  maxAgeHours = 1
+  sessionId: string
 ): Promise<boolean> {
   const sessionInfo = await readSessionInfo(projectPath);
   
@@ -123,11 +122,8 @@ export async function shouldProcessProjectEntity(
     return true;
   }
   
-  // Check if cache is stale
-  const lastProcessed = new Date(sessionInfo.projectEntityCache.lastProcessed);
-  const maxAge = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000);
-  
-  return lastProcessed < maxAge;
+  // Cache exists for this session, skip processing
+  return false;
 }
 
 /**

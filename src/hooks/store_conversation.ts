@@ -174,8 +174,7 @@ async function storeConversation(hookData: HookData): Promise<void> {
     
     const shouldCreateEntity = await shouldProcessProjectEntity(
       projectContext.projectPath, 
-      hookData.session_id,
-      1 // 1 hour cache
+      hookData.session_id
     );
     
     if (shouldCreateEntity) {
