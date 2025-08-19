@@ -182,14 +182,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
-        name: "get_project_portfolio",
-        description: "Get overview of all projects with technology stacks and activity metrics",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
-      {
         name: "get_technology_expertise",
         description: "Analyze technology expertise across all projects",
         inputSchema: {
@@ -495,20 +487,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           ],
         };
 
-      case "get_project_portfolio":
-        const portfolio = await getProjectPortfolio();
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                projects: portfolio,
-                total_projects: portfolio.length,
-                total_technologies: [...new Set(portfolio.flatMap(p => p.technologies))].length
-              }, null, 2),
-            },
-          ],
-        };
 
       case "get_technology_expertise":
         const techExpertise = await getTechnologyExpertise(args.technology as string);

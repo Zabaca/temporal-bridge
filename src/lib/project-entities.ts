@@ -563,7 +563,7 @@ export async function getCurrentProjectContext(): Promise<{
     projectPath: string;
     technologies: string[];
     lastActivity?: string;
-    conversationCount: number;
+    sessionCount: number;
   };
   error?: string;
 }> {
@@ -575,17 +575,23 @@ export async function getCurrentProjectContext(): Promise<{
     const entityResult = await getProjectEntity(projectContext.projectId);
     
     if (entityResult.success && entityResult.entity) {
-      // Get conversation count for this project
+      // Get session count for this project
       const client = createZepClient();
       const config = await getDefaultConfigAsync();
       const userId = config.userId || "developer";
       
-      const conversationResults = await client.graph.search({
+      const sessionResults = await client.graph.search({
         userId,
-        query: `OCCURS_IN ${projectContext.projectId}`,
+        query: `session OCCURS_IN ${projectContext.projectId}`,
         scope: 'edges',
         limit: 50
       });
+      
+      // Filter for session relationships only
+      const sessionEdges = sessionResults?.edges?.filter(edge => 
+        (edge.name === 'OCCURS_IN' || edge.name === 'OCCURRED_IN') && 
+        edge.fact.includes('session-')
+      ) || [];
       
       return {
         success: true,
@@ -596,7 +602,7 @@ export async function getCurrentProjectContext(): Promise<{
           projectPath: projectContext.projectPath,
           technologies: entityResult.technologies || [],
           lastActivity: entityResult.entity.attributes?.lastUpdated,
-          conversationCount: conversationResults?.edges?.length || 0
+          sessionCount: sessionEdges.length
         }
       };
     } else {
@@ -608,7 +614,7 @@ export async function getCurrentProjectContext(): Promise<{
           organization: projectContext.organization,
           projectPath: projectContext.projectPath,
           technologies: [],
-          conversationCount: 0
+          sessionCount: 0
         }
       };
     }
@@ -724,7 +730,7 @@ export async function getProjectStatistics(projectId?: string): Promise<{
   projectSpecific?: {
     projectId: string;
     technologies: number;
-    conversations: number;
+    sessions: number;
     relationships: number;
     expertiseScore: number;
   };
@@ -750,20 +756,20 @@ export async function getProjectStatistics(projectId?: string): Promise<{
       }
 
       const technologies = entityResult.technologies?.length || 0;
-      const conversations = relationshipResult.relationships?.sessions.length || 0;
+      const sessions = relationshipResult.relationships?.sessions.length || 0;
       const totalRelationships = (relationshipResult.relationships?.developers.length || 0) +
                                (relationshipResult.relationships?.technologies.length || 0) +
                                (relationshipResult.relationships?.sessions.length || 0) +
                                (relationshipResult.relationships?.organization ? 1 : 0);
 
-      const expertiseScore = technologies * 2 + conversations * 0.5 + totalRelationships * 0.1;
+      const expertiseScore = technologies * 2 + sessions * 0.5 + totalRelationships * 0.1;
 
       return {
         success: true,
         projectSpecific: {
           projectId,
           technologies,
-          conversations,
+          sessions,
           relationships: totalRelationships,
           expertiseScore: Math.round(expertiseScore * 100) / 100
         }
