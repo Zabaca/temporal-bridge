@@ -282,6 +282,9 @@ export interface UnifiedMemoryQuery {
   searchScope?: "edges" | "nodes" | "episodes";
   minRating?: number;
   reranker?: 'cross_encoder' | 'none';
+  debugListProjects?: boolean;
+  debugPortfolio?: boolean;
+  debugCreateEntity?: boolean;
 }
 
 export interface UnifiedMemoryResult {
@@ -376,6 +379,66 @@ export async function retrieveMemory(options: UnifiedMemoryQuery = {}): Promise<
   const results: UnifiedMemoryResult[] = [];
   
   try {
+    // Handle debug commands
+    if (options.debugListProjects) {
+      console.log("🔍 DEBUG: Testing listProjectEntities() API call\n");
+      const { listProjectEntities } = await import("./project-entities.ts");
+      const result = await listProjectEntities();
+      console.log("Raw API Response:", JSON.stringify(result, null, 2));
+      return [];
+    }
+    
+    if (options.debugPortfolio) {
+      console.log("🔍 DEBUG: Testing getProjectPortfolio() API call\n");
+      const result = await getProjectPortfolio();
+      console.log("Raw API Response:", JSON.stringify(result, null, 2));
+      return [];
+    }
+    
+    if (options.debugCreateEntity) {
+      console.log("🔍 DEBUG: Creating test project entity with corrected PascalCase labels\n");
+      const { ensureProjectEntity } = await import("./project-entities.ts");
+      
+      const projectPath = Deno.cwd();
+      console.log(`Creating entity for project path: ${projectPath}`);
+      
+      const result = await ensureProjectEntity(projectPath, { 
+        forceUpdate: true, // Force recreation to get new labels
+        skipTechDetection: false 
+      });
+      
+      console.log("Entity Creation Result:", JSON.stringify(result, null, 2));
+      
+      if (result.success) {
+        console.log(`\n✅ SUCCESS: Created entity '${result.projectEntity?.name}' with ${result.technologiesDetected} technologies`);
+        console.log(`🔗 Created ${result.relationships?.length || 0} relationships`);
+        
+        // Also test with a generic search to see if entity exists at all
+        console.log("\n🔍 Testing with generic search to see if entity exists...");
+        const searchResults = await searchMemory("zabaca-temporal-bridge", "nodes", 5);
+        console.log(`Found ${searchResults.length} results in generic search:`);
+        searchResults.forEach((result, i) => {
+          console.log(`${i+1}. ${result.content.substring(0, 100)}...`);
+        });
+        
+        // Now test if it shows up in list_projects  
+        console.log("\n🔍 Testing if new entity appears in list_projects...");
+        const { listProjectEntities } = await import("./project-entities.ts");
+        const listResult = await listProjectEntities();
+        console.log("List Projects Result:", JSON.stringify(listResult, null, 2));
+        
+        if (listResult.success && listResult.count && listResult.count > 0) {
+          console.log(`\n✅ VERIFICATION SUCCESS: Found ${listResult.count} project(s) in list_projects!`);
+        } else {
+          console.log(`\n❌ VERIFICATION FAILED: Still no projects found in list_projects`);
+        }
+      } else {
+        console.log(`\n❌ FAILED: ${result.error}`);
+      }
+      
+      return [];
+    }
+    
     // Handle query-based search
     if (options.query) {
       const searchResults = await searchMemory(
@@ -790,7 +853,7 @@ export async function searchPersonalWithProjectFilter(
             project_id: projectId,
             name: node.name,
             labels: node.labels,
-            entity_type: node.labels?.includes("project") ? "Project" : "unknown"
+            entity_type: node.labels?.includes("Location") ? "Project" : "unknown"
           }
         });
       }
@@ -812,11 +875,14 @@ export async function getProjectPortfolio(): Promise<ProjectPortfolioResult[]> {
   const userId = config.userId || "developer";
   
   try {
-    // Search for all project entities
+    // Search for all project entities (using Location labels)
     const projectResults = await client.graph.search({
       userId,
-      query: "Project",
+      query: "*",
       scope: 'nodes',
+      searchFilters: {
+        nodeLabels: ["Location"]
+      },
       limit: 50
     });
 
@@ -824,7 +890,7 @@ export async function getProjectPortfolio(): Promise<ProjectPortfolioResult[]> {
     
     if (projectResults?.nodes) {
       for (const node of projectResults.nodes) {
-        if (node.labels?.includes("project") || node.labels?.includes("Project")) {
+        if (node.labels?.includes("Location")) {
           // Get project technologies from attributes
           const technologies = typeof node.attributes?.technologies === 'string' 
             ? node.attributes.technologies.split(", ") 
@@ -835,7 +901,7 @@ export async function getProjectPortfolio(): Promise<ProjectPortfolioResult[]> {
             userId,
             query: `OCCURS_IN ${node.name}`,
             scope: 'edges',
-            limit: 100
+            limit: 50
           });
           
           const conversationCount = conversationResults?.edges?.length || 0;
@@ -886,7 +952,7 @@ export async function getTechnologyExpertise(technology?: string): Promise<Techn
       userId,
       query: queryTerm,
       scope: 'edges',
-      limit: 100
+      limit: 50
     });
 
     const techExpertise = new Map<string, TechnologyExpertiseResult>();

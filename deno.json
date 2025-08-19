@@ -5,7 +5,7 @@
   "exports": "./src/lib/types.ts",
   "tasks": {
     "dev": "deno run --allow-env --allow-net src/retrieve_memory.ts",
-    "search": "deno run --allow-env --allow-net src/retrieve_memory.ts",
+    "search": "deno run --allow-env --allow-net --allow-read src/retrieve_memory.ts",
     "hook": "deno run --allow-env --allow-read --allow-write --allow-net src/hooks/store_conversation.ts",
     "mcp": "deno run --allow-env --allow-read --allow-net src/mcp-server.ts",
     "install": "deno cache src/retrieve_memory.ts src/hooks/store_conversation.ts src/mcp-server.ts",

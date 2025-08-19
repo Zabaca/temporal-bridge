@@ -178,10 +178,50 @@ export interface ClaudeSessionInfo {
   projectEntityCache?: {
     /** Last time project entity was processed for this session */
     lastProcessed: string;
-    /** Number of technologies detected */
-    technologiesDetected?: number;
     /** Whether entity creation succeeded */
     success: boolean;
+    /** Number of technologies detected */
+    technologiesDetected?: number;
+    /** Full project entity information */
+    projectEntity?: {
+      /** Project ID and name */
+      projectId: string;
+      projectName: string;
+      displayName?: string;
+      organization?: string;
+      projectPath: string;
+      projectType: 'git' | 'directory' | 'unknown';
+      repository?: string;
+    };
+    /** All detected technologies with full details */
+    technologies?: Array<{
+      name: string;
+      confidence: number;
+      source: TechnologyDetectionSource;
+      version?: string;
+      context?: string;
+    }>;
+    /** All relationships created */
+    relationships?: Array<{
+      subject: string;
+      predicate: ProjectRelationshipType;
+      object: string;
+      confidence: number;
+      context?: string;
+    }>;
+    /** Raw Zep API responses for debugging */
+    rawResponses?: {
+      entityCreation?: any;
+      relationshipCreation?: any;
+    };
+    /** Processing performance metrics */
+    performance?: {
+      detectionTimeMs: number;
+      creationTimeMs: number;
+      totalTimeMs: number;
+    };
+    /** Any errors encountered during processing */
+    errors?: string[];
   };
   /** Additional session metadata */
   metadata?: {

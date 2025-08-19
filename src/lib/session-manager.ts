@@ -131,20 +131,46 @@ export async function shouldProcessProjectEntity(
 }
 
 /**
- * Mark project entity as processed for this session
+ * Mark project entity as processed for this session with full details
  */
 export async function markProjectEntityProcessed(
   projectPath: string,
   sessionId: string,
-  technologiesDetected?: number,
-  success = true
+  result: {
+    success: boolean;
+    technologiesDetected?: number;
+    projectEntity?: any;
+    technologies?: any[];
+    relationships?: any[];
+    rawResponses?: any;
+    performance?: {
+      detectionTimeMs: number;
+      creationTimeMs: number;
+      totalTimeMs: number;
+    };
+    errors?: string[];
+  }
 ): Promise<void> {
   await updateSessionInfo(projectPath, {
     sessionId,
     projectEntityCache: {
       lastProcessed: new Date().toISOString(),
-      technologiesDetected,
-      success
+      success: result.success,
+      technologiesDetected: result.technologiesDetected,
+      projectEntity: result.projectEntity ? {
+        projectId: result.projectEntity.name,
+        projectName: result.projectEntity.properties?.displayName || result.projectEntity.name,
+        displayName: result.projectEntity.properties?.displayName,
+        organization: result.projectEntity.properties?.organization,
+        projectPath: result.projectEntity.properties?.path,
+        projectType: result.projectEntity.properties?.projectType || 'unknown',
+        repository: result.projectEntity.properties?.repository
+      } : undefined,
+      technologies: result.technologies,
+      relationships: result.relationships,
+      rawResponses: result.rawResponses,
+      performance: result.performance,
+      errors: result.errors
     }
   });
 }

@@ -19,6 +19,13 @@ export interface EntityCreationResult {
   projectEntity?: ProjectEntity;
   relationships?: ProjectRelationship[];
   technologiesDetected?: number;
+  detectedTechnologies?: Array<{
+    name: string;
+    confidence: number;
+    source: string;
+    version?: string;
+    context?: string;
+  }>;
   message?: string;
   error?: string;
 }
@@ -112,7 +119,7 @@ export async function ensureProjectEntity(
       {
         name: projectEntity.name,
         summary: `Project: ${entityProperties.displayName}`,
-        labels: ["project", projectContext.projectType],
+        labels: ["Location", projectContext.projectType],
         attributes: {
           ...entityProperties,
           technologies: entityProperties.technologies.join(", ")
@@ -126,7 +133,7 @@ export async function ensureProjectEntity(
         entities.push({
           name: tech.name,
           summary: `Technology: ${tech.name}`,
-          labels: ["technology", tech.source],
+          labels: ["Technology", tech.source],
           attributes: {
             name: tech.name,
             confidence: tech.confidence,
@@ -143,7 +150,7 @@ export async function ensureProjectEntity(
       entities.push({
         name: projectContext.organization,
         summary: `Organization: ${projectContext.organization}`,
-        labels: ["organization"],
+        labels: ["Organization"],
         attributes: {
           name: projectContext.organization,
           type: "organization"
@@ -222,6 +229,7 @@ export async function ensureProjectEntity(
       projectEntity,
       relationships,
       technologiesDetected: techDetection?.technologies.length || 0,
+      detectedTechnologies: techDetection?.technologies || [],
       message: `Project entity created successfully with ${relationships.length} relationships`
     };
 
@@ -325,11 +333,14 @@ export async function getProjectEntity(projectId: string): Promise<{
     const config = await getDefaultConfigAsync();
     const userId = config.userId || "developer";
 
-    // Search for project entity
+    // Search for project entity using Location labels
     const entityResults = await client.graph.search({
       userId,
       query: projectId,
       scope: 'nodes',
+      searchFilters: {
+        nodeLabels: ["Location"]
+      },
       limit: 5
     });
 
@@ -389,14 +400,15 @@ export async function listProjectEntities(): Promise<{
 
     const searchResults = await client.graph.search({
       userId,
-      query: "Project",
+      query: "*", // Search for all nodes
       scope: 'nodes',
+      searchFilters: {
+        nodeLabels: ["Location"]
+      },
       limit: 50
     });
 
-    const projects = searchResults?.nodes?.filter(node => 
-      node.labels?.includes("project") || node.labels?.includes("Project")
-    ) || [];
+    const projects = searchResults?.nodes || [];
 
     return {
       success: true,
@@ -502,7 +514,7 @@ export async function getProjectTechnologies(projectId: string): Promise<{
       userId,
       query: `${projectId} USES`,
       scope: 'edges',
-      limit: 100
+      limit: 50
     });
 
     const technologies = [];
@@ -572,7 +584,7 @@ export async function getCurrentProjectContext(): Promise<{
         userId,
         query: `OCCURS_IN ${projectContext.projectId}`,
         scope: 'edges',
-        limit: 100
+        limit: 50
       });
       
       return {
@@ -635,7 +647,7 @@ export async function getProjectRelationships(projectId: string): Promise<{
       userId,
       query: projectId,
       scope: 'edges',
-      limit: 100
+      limit: 50
     });
 
     const relationships = {
@@ -761,8 +773,8 @@ export async function getProjectStatistics(projectId?: string): Promise<{
     // Get overall statistics
     const [projectResults, techResults, conversationResults] = await Promise.all([
       client.graph.search({ userId, query: "Project", scope: 'nodes', limit: 100 }),
-      client.graph.search({ userId, query: "USES", scope: 'edges', limit: 200 }),
-      client.graph.search({ userId, query: "OCCURS_IN", scope: 'edges', limit: 200 })
+      client.graph.search({ userId, query: "USES", scope: 'edges', limit: 50 }),
+      client.graph.search({ userId, query: "OCCURS_IN", scope: 'edges', limit: 50 })
     ]);
 
     const statistics = {
@@ -777,7 +789,7 @@ export async function getProjectStatistics(projectId?: string): Promise<{
     // Count projects and organizations
     if (projectResults?.nodes) {
       const projects = projectResults.nodes.filter(node => 
-        node.labels?.includes("project") || node.labels?.includes("Project")
+        node.labels?.includes("Location")
       );
       statistics.totalProjects = projects.length;
 

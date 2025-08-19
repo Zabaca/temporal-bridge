@@ -161,34 +161,78 @@ async function storeConversation(hookData: HookData): Promise<void> {
     
     if (shouldCreateEntity) {
       console.log(`🔄 Creating/updating project entity for session ${hookData.session_id}`);
+      
+      // Track performance metrics
+      const startTime = performance.now();
+      let detectionTime = 0;
+      let creationTime = 0;
+      
+      const detectionStart = performance.now();
       projectEntityResult = await ensureProjectEntity(projectContext.projectPath);
+      const detectionEnd = performance.now();
+      detectionTime = detectionEnd - detectionStart;
       
       if (projectEntityResult.success) {
         console.log(`✅ Project entity: ${projectEntityResult.projectEntity?.name} (${projectEntityResult.technologiesDetected} technologies)`);
         
         // Create session-project relationship
+        const relationStart = performance.now();
         const sessionRelationResult = await createSessionProjectRelationship(
           hookData.session_id, 
           projectContext.projectId
         );
+        const relationEnd = performance.now();
+        creationTime = relationEnd - relationStart;
+        
+        const totalTime = performance.now() - startTime;
         
         if (sessionRelationResult.success) {
           console.log(`🔗 Session linked to project: ${sessionRelationResult.message}`);
           
-          // Mark as processed in session cache
+          // Mark as processed in session cache with full details
           await markProjectEntityProcessed(
             projectContext.projectPath,
             hookData.session_id,
-            projectEntityResult.technologiesDetected,
-            true
+            {
+              success: true,
+              technologiesDetected: projectEntityResult.technologiesDetected,
+              projectEntity: projectEntityResult.projectEntity,
+              technologies: projectEntityResult.detectedTechnologies || [],
+              relationships: projectEntityResult.relationships,
+              rawResponses: {
+                entityCreation: projectEntityResult,
+                relationshipCreation: sessionRelationResult
+              },
+              performance: {
+                detectionTimeMs: Math.round(detectionTime),
+                creationTimeMs: Math.round(creationTime),
+                totalTimeMs: Math.round(totalTime)
+              },
+              errors: []
+            }
           );
         } else {
           console.warn(`⚠️  Failed to link session to project: ${sessionRelationResult.error}`);
           await markProjectEntityProcessed(
             projectContext.projectPath,
             hookData.session_id,
-            undefined,
-            false
+            {
+              success: false,
+              technologiesDetected: projectEntityResult.technologiesDetected,
+              projectEntity: projectEntityResult.projectEntity,
+              technologies: [],
+              relationships: projectEntityResult.relationships || [],
+              rawResponses: {
+                entityCreation: projectEntityResult,
+                relationshipCreation: sessionRelationResult
+              },
+              performance: {
+                detectionTimeMs: Math.round(detectionTime),
+                creationTimeMs: Math.round(creationTime),
+                totalTimeMs: Math.round(performance.now() - startTime)
+              },
+              errors: [sessionRelationResult.error || 'Session relationship creation failed']
+            }
           );
         }
       } else {
@@ -196,8 +240,22 @@ async function storeConversation(hookData: HookData): Promise<void> {
         await markProjectEntityProcessed(
           projectContext.projectPath,
           hookData.session_id,
-          undefined,
-          false
+          {
+            success: false,
+            technologiesDetected: 0,
+            projectEntity: undefined,
+            technologies: [],
+            relationships: [],
+            rawResponses: {
+              entityCreation: projectEntityResult
+            },
+            performance: {
+              detectionTimeMs: Math.round(detectionTime),
+              creationTimeMs: 0,
+              totalTimeMs: Math.round(performance.now() - startTime)
+            },
+            errors: [projectEntityResult.error || 'Project entity creation failed']
+          }
         );
       }
     } else {

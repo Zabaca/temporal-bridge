@@ -18,8 +18,8 @@
       "cwd": "/home/uptown/Projects/zabaca/temporal-bridge",
       "env": {
         "ZEP_API_KEY": "${ZEP_API_KEY}",
-        "PROJECT_DIR": "${PWD}",
-        "DEVELOPER_ID": "${USER:-developer}"
+        "PROJECT_DIR": "/home/uptown/Projects/zabaca/temporal-bridge",
+        "DEVELOPER_ID": "developer"
       }
     }
   }

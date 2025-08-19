@@ -42,6 +42,15 @@ async function main() {
       case '--reranker':
         options.reranker = args[++i] as 'cross_encoder' | 'none';
         break;
+      case '--debug-list-projects':
+        options.debugListProjects = true;
+        break;
+      case '--debug-portfolio':
+        options.debugPortfolio = true;
+        break;
+      case '--debug-create-entity':
+        options.debugCreateEntity = true;
+        break;
       case '--help':
       case '-h':
         console.log(`
@@ -57,11 +66,17 @@ Options:
   -s, --scope <scope>       Search scope: edges|nodes|episodes (default: edges)
   -r, --min-rating <float>  Minimum fact rating filter
   --reranker <type>         Reranker: cross_encoder|none (default: cross_encoder)
+  --debug-list-projects     Debug list_projects API call
+  --debug-portfolio         Debug get_project_portfolio API call
+  --debug-create-entity     Create test project entity with corrected labels
   -h, --help               Show this help
 
 Examples:
   ./retrieve_memory.ts --query "typescript functions"
   ./retrieve_memory.ts --thread "claude-code-abc123" --limit 20
+  ./retrieve_memory.ts --debug-list-projects
+  ./retrieve_memory.ts --debug-portfolio
+  ./retrieve_memory.ts --debug-create-entity
   ./retrieve_memory.ts --query "project setup" --scope episodes
   ./retrieve_memory.ts  # Get recent memory facts
 
