@@ -217,12 +217,30 @@ PROJECT_DIR=/path/to/project        # Default: current directory
 
 ## Development Guidelines
 
+### Coding Standards
+**📚 [Full Coding Standards Document](docs/coding-standards.md)**
+
+**Core Rule**: **Never use `any` type** - Use proper TypeScript types, interfaces, generics, or `unknown` instead.
+
+Examples:
+```typescript
+// ❌ Bad
+const data: any = await api.fetch();
+catch (error: any) { ... }
+
+// ✅ Good  
+interface ApiResponse { id: string; name: string; }
+const data: ApiResponse = await api.fetch();
+catch (error: Error | unknown) { ... }
+```
+
 ### When Working on TemporalBridge
 1. **Run from project directory**: `cd ~/Projects/zabaca/temporal-bridge`
 2. **Test changes**: `deno task check` for source code type checking
 3. **Run unit tests**: `deno task test` - comprehensive business logic testing
-4. **Verify MCP tools**: Test new project management tools after changes
-5. **Check hook storage**: Verify conversations stored in user graph with project entities
+4. **Lint code**: `npx biome check` - enforces zero `any` usage
+5. **Verify MCP tools**: Test new project management tools after changes
+6. **Check hook storage**: Verify conversations stored in user graph with project entities
 
 ### Knowledge Curation Workflow
 1. **Develop personally** - All conversations stored in your user graph
