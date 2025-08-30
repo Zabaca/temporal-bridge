@@ -33,21 +33,30 @@ export {
 
 export {
   // Memory search
-  searchFacts,
-  searchMemory,
-  getThreadContext,
-  getRecentEpisodes,
-  getCurrentContext,
-  retrieveMemory,
   MemoryToolsService,
 } from './memory-tools';
 
 export {
   // Project entities
   ProjectEntitiesService,
-  listProjectEntities,
-  ensureProjectEntity,
 } from './project-entities';
+
+// Legacy functions for CLI compatibility - to be refactored
+export async function listProjectEntities() {
+  const { ZepService } = await import('./zep-client.js');
+  const { ProjectEntitiesService } = await import('./project-entities.js');
+  const zepService = new ZepService();
+  const service = new ProjectEntitiesService(zepService);
+  return await service.listProjectEntities();
+}
+
+export async function ensureProjectEntity(projectPath: string, options: any = {}) {
+  const { ZepService } = await import('./zep-client.js');
+  const { ProjectEntitiesService } = await import('./project-entities.js');
+  const zepService = new ZepService();
+  const service = new ProjectEntitiesService(zepService);
+  return await service.ensureProjectEntity(projectPath, options);
+}
 
 export {
   // Session management

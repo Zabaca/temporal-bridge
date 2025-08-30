@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MemoryToolsService, ProjectEntitiesService, SessionManager, ZepClient } from '@temporal-bridge/core';
+import { MemoryToolsService, ProjectEntitiesService, SessionManager, ZepService } from './lib';
 import { SearchCommand } from './commands/search.command';
 import { ShareKnowledgeCommand } from './commands/share-knowledge.command';
 import { StoreConversationCommand } from './commands/store-conversation.command';
@@ -10,7 +10,7 @@ import { StoreConversationCommand } from './commands/store-conversation.command'
     StoreConversationCommand,
     ShareKnowledgeCommand,
     SessionManager,
-    ZepClient,
+    ZepService,
     MemoryToolsService,
     ProjectEntitiesService,
   ],

@@ -8,9 +8,9 @@ import type {
   ProjectRelationship,
   TechnologyDetectionResult,
 } from './types';
-import { ZepClient, createZepClient, getDefaultConfigAsync } from './zep-client';
+import { ZepService } from './zep-client';
 
-interface ZepNode {
+export interface ZepNode {
   name: string;
   attributes?: Record<string, unknown>;
   createdAt?: string;
@@ -38,31 +38,25 @@ export interface EntityCreationResult {
 
 @Injectable()
 export class ProjectEntitiesService {
+  constructor(private readonly zepService: ZepService) {}
   /**
    * Create or update a Project entity in Zep's knowledge graph
    */
   async ensureProjectEntity(projectPath: string, options: EntityCreationOptions = {}): Promise<EntityCreationResult> {
     try {
-      const client = createZepClient();
-      const config = await getDefaultConfigAsync();
-      const userId = config.userId || 'developer';
 
       const projectContext = await detectProject(projectPath);
 
-      const techDetection = await this.detectTechnologies(client, userId, projectContext, options);
+      const techDetection = await this.detectTechnologies(projectContext, options);
 
       const entityProperties = this.createEntityProperties(projectContext, techDetection);
       const projectEntity = this.createProjectEntity(projectContext, entityProperties);
 
       const entities = this.prepareEntitiesForZep(projectEntity, techDetection, projectContext);
-      const relationships = this.prepareRelationshipsForZep(userId, projectContext, techDetection);
+      const relationships = this.prepareRelationshipsForZep(projectContext, techDetection);
 
-      await this.addEntitiesToZep(client, userId, entities);
-      await this.addFactsToZep(
-        client,
-        userId,
-        relationships.map((r) => `${r.subject} ${r.predicate} ${r.object}`),
-      );
+      await this.addEntitiesToZep(entities);
+      await this.addFactsToZep(relationships.map((r) => `${r.subject} ${r.predicate} ${r.object}`));
 
       console.log(`✅ Created project entity: ${projectEntity.name}`);
       console.log(`📊 Technologies detected: ${techDetection?.technologies.length || 0}`);
@@ -86,8 +80,6 @@ export class ProjectEntitiesService {
   }
 
   private async detectTechnologies(
-    client: ZepClient,
-    userId: string,
     projectContext: ProjectContext,
     options: EntityCreationOptions,
   ): Promise<TechnologyDetectionResult | null> {
@@ -95,8 +87,8 @@ export class ProjectEntitiesService {
     if (!options.skipTechDetection) {
       let shouldDetectTech = true;
       try {
-        const existingResults = await client.graph.search({
-          userId,
+        const existingResults = await this.zepService.graph.search({
+          userId: this.zepService.userId,
           query: `Project ${projectContext.projectName}`,
           scope: 'nodes',
           limit: 1,
@@ -226,14 +218,13 @@ export class ProjectEntitiesService {
   }
 
   private prepareRelationshipsForZep(
-    userId: string,
     projectContext: ProjectContext,
     techDetection: TechnologyDetectionResult | null,
   ): ProjectRelationship[] {
     const relationships: ProjectRelationship[] = [];
 
     relationships.push({
-      subject: userId,
+      subject: this.zepService.userId,
       predicate: 'WORKS_ON',
       object: projectContext.projectId,
       confidence: 1.0,
@@ -265,8 +256,6 @@ export class ProjectEntitiesService {
   }
 
   private async addEntitiesToZep(
-    client: ZepClient,
-    userId: string,
     entities: Array<{
       name: string;
       summary: string;
@@ -275,18 +264,18 @@ export class ProjectEntitiesService {
     }>,
   ): Promise<void> {
     for (const entity of entities) {
-      await client.graph.add({
-        userId,
+      await this.zepService.graph.add({
+        userId: this.zepService.userId,
         type: 'json',
         data: JSON.stringify(entity),
       });
     }
   }
 
-  private async addFactsToZep(client: ZepClient, userId: string, facts: string[]): Promise<void> {
+  private async addFactsToZep(facts: string[]): Promise<void> {
     for (const fact of facts) {
-      await client.graph.add({
-        userId,
+      await this.zepService.graph.add({
+        userId: this.zepService.userId,
         type: 'text',
         data: fact,
       });
@@ -320,12 +309,8 @@ export class ProjectEntitiesService {
 
   private async needsUpdate(projectContext: ProjectContext): Promise<boolean> {
     try {
-      const client = createZepClient();
-      const config = await getDefaultConfigAsync();
-      const userId = config.userId || 'developer';
-
-      const searchResults = await client.graph.search({
-        userId,
+      const searchResults = await this.zepService.graph.search({
+        userId: this.zepService.userId,
         query: `Project ${projectContext.projectName}`,
         scope: 'nodes',
         limit: 1,
@@ -360,12 +345,8 @@ export class ProjectEntitiesService {
     error?: string;
   }> {
     try {
-      const client = createZepClient();
-      const config = await getDefaultConfigAsync();
-      const userId = config.userId || 'developer';
-
-      const entityResults = await client.graph.search({
-        userId,
+      const entityResults = await this.zepService.graph.search({
+        userId: this.zepService.userId,
         query: projectId,
         scope: 'nodes',
         searchFilters: {
@@ -374,8 +355,8 @@ export class ProjectEntitiesService {
         limit: 5,
       });
 
-      const relationshipResults = await client.graph.search({
-        userId,
+      const relationshipResults = await this.zepService.graph.search({
+        userId: this.zepService.userId,
         query: projectId,
         scope: 'edges',
         limit: 20,
@@ -423,12 +404,8 @@ export class ProjectEntitiesService {
     error?: string;
   }> {
     try {
-      const client = createZepClient();
-      const config = await getDefaultConfigAsync();
-      const userId = config.userId || 'developer';
-
-      const searchResults = await client.graph.search({
-        userId,
+      const searchResults = await this.zepService.graph.search({
+        userId: this.zepService.userId,
         query: '*', // Search for all nodes
         scope: 'nodes',
         searchFilters: {
@@ -486,14 +463,10 @@ export class ProjectEntitiesService {
     projectId: string,
   ): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
-      const client = createZepClient();
-      const config = await getDefaultConfigAsync();
-      const userId = config.userId || 'developer';
-
       const sessionFact = `session-${sessionId} OCCURS_IN ${projectId}`;
 
-      await client.graph.add({
-        userId,
+      await this.zepService.graph.add({
+        userId: this.zepService.userId,
         type: 'text',
         data: sessionFact,
       });
@@ -533,12 +506,8 @@ export class ProjectEntitiesService {
       const entityResult = await this.getProjectEntity(projectContext.projectId);
 
       if (entityResult.success && entityResult.entity) {
-        const client = createZepClient();
-        const config = await getDefaultConfigAsync();
-        const userId = config.userId || 'developer';
-
-        const sessionResults = await client.graph.search({
-          userId,
+        const sessionResults = await this.zepService.graph.search({
+          userId: this.zepService.userId,
           query: `session OCCURS_IN ${projectContext.projectId}`,
           scope: 'edges',
           limit: 50,
@@ -584,7 +553,7 @@ export class ProjectEntitiesService {
 }
 
 // Export standalone functions for backward compatibility
-const projectEntitiesServiceInstance = new ProjectEntitiesService();
+const projectEntitiesServiceInstance = new ProjectEntitiesService(new ZepService());
 
 export async function listProjectEntities(): Promise<{
   success: boolean;

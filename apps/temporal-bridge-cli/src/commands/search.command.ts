@@ -1,4 +1,6 @@
-import { type UnifiedMemoryQuery, retrieveMemory } from '@temporal-bridge/core';
+import { Injectable } from '@nestjs/common';
+import { MemoryToolsService } from '../lib/memory-tools';
+import type { UnifiedMemoryQuery } from '../lib/types';
 import { Command, CommandRunner, Option } from 'nest-commander';
 
 interface SearchOptions {
@@ -13,11 +15,15 @@ interface SearchOptions {
   debugPortfolio?: boolean;
 }
 
+@Injectable()
 @Command({
   name: 'search',
   description: 'Search and retrieve memories from Zep temporal knowledge graphs',
 })
 export class SearchCommand extends CommandRunner {
+  constructor(private readonly memoryTools: MemoryToolsService) {
+    super();
+  }
   async run(_passedParams: string[], options?: SearchOptions): Promise<void> {
     const searchOptions: UnifiedMemoryQuery = {};
 
@@ -50,7 +56,7 @@ export class SearchCommand extends CommandRunner {
     }
 
     try {
-      const results = await retrieveMemory(searchOptions);
+      const results = await this.memoryTools.retrieveMemory(searchOptions);
       console.log(JSON.stringify(results, null, 2));
     } catch (error) {
       console.error('❌ Search failed:', error);

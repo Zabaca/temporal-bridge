@@ -62,13 +62,15 @@ Convert the TemporalBridge project from a standalone Deno project to a Node.js/p
 - [x] Sub-goal 3.5: Implement share-knowledge command
 - [x] Sub-goal 3.6: Add proper CLI entry point with createWithoutRunning pattern
 
-### Parent Goal 4: Implement MCP Server (apps/temporal-bridge-mcp)
-- [ ] Sub-goal 4.1: Set up NestJS application with @rekog/mcp-nest
-- [ ] Sub-goal 4.2: Create MCP module with proper metadata
-- [ ] Sub-goal 4.3: Implement memory tools with @Tool decorators
-- [ ] Sub-goal 4.4: Implement project management tools
-- [ ] Sub-goal 4.5: Implement context and search tools
-- [ ] Sub-goal 4.6: Add Zod schemas for all tool parameters
+### Parent Goal 4: Implement MCP Server (consolidated into CLI app)
+- [x] Sub-goal 4.1: Set up @rekog/mcp-nest v1.8.2 with STDIO transport
+- [x] Sub-goal 4.2: Create MCP module with proper metadata and server configuration
+- [x] Sub-goal 4.3: Implement all memory tools with @Tool decorators and Zod validation
+- [x] Sub-goal 4.4: Implement project management tools (list_projects, project_technologies, etc.)
+- [x] Sub-goal 4.5: Implement context and search tools (get_current_context, search_all, etc.)
+- [x] Sub-goal 4.6: Add comprehensive Zod schemas for all 15+ tool parameters
+- [x] Sub-goal 4.7: Create mcp.ts entrypoint alongside main.ts
+- [x] Sub-goal 4.8: Add MCP development and production scripts
 
 ### Parent Goal 5: Configure Build and Development System
 - [ ] Sub-goal 5.1: Create tsconfig.base.json at root
@@ -101,7 +103,42 @@ Convert the TemporalBridge project from a standalone Deno project to a Node.js/p
 
 ## Implementation Notes
 
-### Directory Structure
+### IMPORTANT: Architecture Consolidation (December 2024)
+
+**Major Change**: The original plan to create separate `apps/temporal-bridge-cli` and `apps/temporal-bridge-mcp` packages has been **consolidated** into a single package for better maintainability.
+
+**Rationale**:
+- Eliminated cross-package dependency issues that caused IDE problems
+- Simplified module resolution and TypeScript compilation
+- Reduced complexity while maintaining all functionality
+- Better dependency injection visibility within single package
+
+**Final Structure**:
+```
+temporal-bridge/
+├── apps/temporal-bridge-cli/          # Single consolidated app
+│   ├── src/
+│   │   ├── main.ts                   # CLI entrypoint
+│   │   ├── mcp.ts                    # MCP server entrypoint
+│   │   ├── lib/                      # All core functionality consolidated here
+│   │   │   ├── memory-tools.ts       # (moved from libs/temporal-bridge-core)
+│   │   │   ├── project-entities.ts   # (moved from libs/temporal-bridge-core)
+│   │   │   └── ...                   # All other core files
+│   │   ├── commands/                 # CLI commands
+│   │   └── mcp/                      # MCP tools with @rekog/mcp-nest
+│   └── package.json                  # All dependencies consolidated
+├── docs/plans/                       # This file and other documentation
+└── CLAUDE.md                         # Updated project instructions
+```
+
+**Benefits Achieved**:
+- ✅ WebStorm/IDE can properly trace method usage (no more "no usages" warnings)
+- ✅ Single package.json with all dependencies
+- ✅ Cleaner imports using relative paths
+- ✅ Both CLI and MCP functionality in same codebase
+- ✅ Proper NestJS dependency injection throughout
+
+### Directory Structure (Original Plan - SUPERSEDED)
 ```
 temporal-bridge/
 ├── pnpm-workspace.yaml

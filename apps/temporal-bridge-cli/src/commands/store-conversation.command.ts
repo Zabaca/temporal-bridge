@@ -5,14 +5,11 @@ import { Injectable } from '@nestjs/common';
 import {
   ProjectEntitiesService,
   SessionManager,
-  ZepClient,
+  ZepService,
   detectProject,
-  ensureThread,
-  ensureUser,
-  getDefaultConfigAsync,
-} from '@temporal-bridge/core';
-import type { HookData, ParsedMessage, TranscriptMessage } from '@temporal-bridge/core';
-import type { ProjectContext } from '@temporal-bridge/core/dist/project-detector';
+} from '../lib';
+import type { HookData, ParsedMessage, TranscriptMessage } from '../lib/types';
+import type { ProjectContext } from '../lib/project-detector';
 import { Command, CommandRunner, Option } from 'nest-commander';
 
 interface StoreConversationOptions {
@@ -39,7 +36,7 @@ interface LocalTranscriptMessage {
 export class StoreConversationCommand extends CommandRunner {
   constructor(
     private readonly sessionManager: SessionManager,
-    private readonly zepClient: ZepClient,
+    private readonly zepService: ZepService,
     private readonly projectEntitiesService: ProjectEntitiesService,
   ) {
     super();
@@ -99,13 +96,9 @@ export class StoreConversationCommand extends CommandRunner {
   }
 
   private async setupContext(hookData: HookData) {
-    const config = await getDefaultConfigAsync();
-    const projectContext = config.projectContext || (await detectProject(hookData.cwd));
-    const userId = config.userId || 'developer';
+    const projectContext = await detectProject(hookData.cwd);
+    const userId = this.zepService.userId;
     const threadId = `claude-code-${hookData.session_id}`;
-
-    await ensureUser(this.zepClient, userId);
-    await ensureThread(this.zepClient, threadId, userId);
 
     return { projectContext, userId, threadId };
   }
@@ -151,7 +144,7 @@ export class StoreConversationCommand extends CommandRunner {
         name: msg.name,
         content: msg.content,
       }));
-      await this.zepClient.thread.addMessages(threadId, { messages: zepMessages });
+      await this.zepService.thread.addMessages(threadId, { messages: zepMessages });
       console.log(`✅ Sent ${shortMessages.length} short messages to user thread`);
       for (const msg of shortMessages) {
         if (msg.uuid) {
@@ -161,7 +154,7 @@ export class StoreConversationCommand extends CommandRunner {
     }
 
     for (const msg of largeMessages) {
-      await this.zepClient.graph.add({ userId, type: 'message', data: `${msg.name}: ${msg.content}` });
+      await this.zepService.graph.add({ userId, type: 'message', data: `${msg.name}: ${msg.content}` });
       console.log(`✅ Sent large message (${msg.content.length} chars) to user graph`);
       if (msg.uuid) {
         storedUuids.add(msg.uuid);

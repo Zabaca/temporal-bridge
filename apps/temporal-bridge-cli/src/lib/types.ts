@@ -21,6 +21,39 @@ export interface MemoryResult {
   type: 'memory_context' | 'thread_message' | 'graph_search' | 'user_context';
 }
 
+// Enhanced search types for CLI compatibility
+export interface UnifiedMemoryQuery {
+  query?: string;
+  threadId?: string;
+  userId?: string;
+  limit?: number;
+  searchScope?: 'edges' | 'nodes' | 'episodes';
+  minRating?: number;
+  reranker?: 'cross_encoder' | 'none';
+  debugListProjects?: boolean;
+  debugPortfolio?: boolean;
+  debugCreateEntity?: boolean;
+}
+
+export interface UnifiedMemoryResult {
+  content: string;
+  score?: number;
+  timestamp?: string;
+  type: 'graph_search' | 'user_context' | 'recent_episodes' | 'current_context';
+  metadata: {
+    scope?: string;
+    thread_id?: string;
+    episode_id?: string;
+    source?: string;
+    processed?: boolean;
+    status?: string;
+    role?: string;
+    facts?: unknown[];
+    recent_messages?: unknown[];
+    [key: string]: unknown;
+  };
+}
+
 export interface HookData {
   session_id: string;
   transcript_path: string;
