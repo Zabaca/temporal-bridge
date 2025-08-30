@@ -80,6 +80,33 @@ function findCurrentTransaction(parsedMessages: ParsedMessage[], rawMessages: Tr
   return transactionMessages;
 }
 
+function limitTransactionMessages(messages: ParsedMessage[]): ParsedMessage[] {
+  if (messages.length <= 3) {
+    return messages; // Already within limit
+  }
+
+  const userMessages = messages.filter(m => m.role === 'user');
+  const assistantMessages = messages.filter(m => m.role === 'assistant');
+
+  // Get the first user message (initial prompt) and last 2 assistant messages
+  const firstUserMessage = userMessages[0];
+  const lastTwoAssistantMessages = assistantMessages.slice(-2);
+
+  const limitedMessages = [];
+  
+  // Add first user message if it exists
+  if (firstUserMessage) {
+    limitedMessages.push(firstUserMessage);
+  }
+  
+  // Add last 2 assistant messages
+  limitedMessages.push(...lastTwoAssistantMessages);
+
+  console.log(`🔍 DEBUG: Limited messages from ${messages.length} to ${limitedMessages.length}: ${limitedMessages.map(m => m.role).join(' -> ')}`);
+  
+  return limitedMessages;
+}
+
 async function storeConversation(hookData: HookData): Promise<void> {
   const client = createZepClient();
   
@@ -286,13 +313,16 @@ async function storeConversation(hookData: HookData): Promise<void> {
   }
 
   // Find current transaction using parent-child relationships
-  const transactionMessages = findCurrentTransaction(messages, lines.map(line => {
+  const fullTransactionMessages = findCurrentTransaction(messages, lines.map(line => {
     try {
       return JSON.parse(line);
     } catch {
       return null;
     }
   }).filter(msg => msg !== null));
+
+  // Limit to max 3 messages: user's initial prompt + last 2 assistant messages
+  const transactionMessages = limitTransactionMessages(fullTransactionMessages);
 
   // Write current session info to project directory for current thread detection
   const { updateSessionInfo } = await import("../lib/session-manager.ts");
