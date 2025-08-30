@@ -48,9 +48,56 @@ async function findGitRoot(startPath: string): Promise<string | null> {
 }
 
 /**
- * Extract git remote URL
+ * Parse organization and repository name from git remote URL
  */
-async function getGitRemote(gitRoot: string): Promise<string | null> {
+function parseGitRemote(remoteUrl: string): { organization?: string; name?: string; url: string } {
+  // Common git remote URL patterns:
+  // https://github.com/org/repo.git
+  // git@github.com:org/repo.git
+  // https://gitlab.com/org/repo.git
+  // git@gitlab.com:org/repo.git
+  // https://bitbucket.org/org/repo.git
+  
+  let organization: string | undefined;
+  let name: string | undefined;
+  
+  try {
+    // Handle SSH format: git@host:org/repo.git
+    const sshMatch = remoteUrl.match(/^git@([^:]+):([^/]+)\/([^/]+?)(?:\.git)?$/);
+    if (sshMatch) {
+      organization = sshMatch[2];
+      name = sshMatch[3];
+      return { organization, name, url: remoteUrl };
+    }
+    
+    // Handle HTTPS format: https://host/org/repo.git
+    const httpsMatch = remoteUrl.match(/^https?:\/\/[^/]+\/([^/]+)\/([^/]+?)(?:\.git)?$/);
+    if (httpsMatch) {
+      organization = httpsMatch[1];
+      name = httpsMatch[2];
+      return { organization, name, url: remoteUrl };
+    }
+    
+    // Handle nested paths: https://host/group/subgroup/repo.git
+    const nestedMatch = remoteUrl.match(/^https?:\/\/[^/]+\/(.+?)\/([^/]+?)(?:\.git)?$/);
+    if (nestedMatch) {
+      // For nested paths, use the last segment as org and repo
+      const pathParts = nestedMatch[1].split('/');
+      organization = pathParts[pathParts.length - 1]; // Last group as org
+      name = nestedMatch[2];
+      return { organization, name, url: remoteUrl };
+    }
+  } catch (error) {
+    // Fall back to returning just the URL
+  }
+  
+  return { url: remoteUrl };
+}
+
+/**
+ * Get git remote URL and extract repository information
+ */
+async function getGitRemoteInfo(gitRoot: string): Promise<{ organization?: string; name?: string; url?: string } | null> {
   try {
     const command = new Deno.Command('git', {
       args: ['remote', 'get-url', 'origin'],
@@ -63,13 +110,41 @@ async function getGitRemote(gitRoot: string): Promise<string | null> {
     
     if (success) {
       const remote = new TextDecoder().decode(stdout).trim();
-      return remote || null;
+      if (remote) {
+        return parseGitRemote(remote);
+      }
     }
   } catch (error) {
     // Git not available or no remote
   }
   
   return null;
+}
+
+/**
+ * Validate git repository and get additional info
+ */
+async function validateGitRepo(gitRoot: string): Promise<{ isValid: boolean; hasCommits: boolean }> {
+  try {
+    // Check if we have any commits
+    const command = new Deno.Command('git', {
+      args: ['rev-list', '--count', 'HEAD'],
+      cwd: gitRoot,
+      stdout: 'piped',
+      stderr: 'piped'
+    });
+    
+    const { success, stdout } = await command.output();
+    
+    if (success) {
+      const commitCount = parseInt(new TextDecoder().decode(stdout).trim());
+      return { isValid: true, hasCommits: commitCount > 0 };
+    }
+  } catch (error) {
+    // Repository might be in initial state
+  }
+  
+  return { isValid: true, hasCommits: false }; // Assume valid if .git exists
 }
 
 /**
@@ -164,32 +239,44 @@ function generateProjectId(context: Partial<ProjectContext>): string {
 export async function detectProject(workingDir: string = Deno.cwd()): Promise<ProjectContext> {
   const resolvedPath = resolve(workingDir);
   
-  // Try git-based detection first
+  // Try git-based detection first - this is now the primary method
   const gitRoot = await findGitRoot(resolvedPath);
   
   if (gitRoot) {
-    const gitRemote = await getGitRemote(gitRoot);
+    const gitRemoteInfo = await getGitRemoteInfo(gitRoot);
     const projectConfig = await parseProjectConfig(gitRoot);
     const pathStructure = parsePathStructure(gitRoot);
     
-    // Prefer config name, fallback to path structure
-    const projectName = projectConfig.name || pathStructure.name;
-    const organization = projectConfig.organization || pathStructure.organization;
+    // Priority order for project info:
+    // 1. Git remote URL (highest priority - most authoritative)
+    // 2. Project config files (package.json, deno.json)
+    // 3. Path structure (fallback)
+    
+    let projectName: string;
+    let organization: string | undefined;
+    
+    if (gitRemoteInfo && (gitRemoteInfo.name || gitRemoteInfo.organization)) {
+      // Use git remote as primary source
+      projectName = gitRemoteInfo.name || projectConfig.name || pathStructure.name;
+      organization = gitRemoteInfo.organization || projectConfig.organization || pathStructure.organization;
+    } else {
+      // Fallback to config/path
+      projectName = projectConfig.name || pathStructure.name;
+      organization = projectConfig.organization || pathStructure.organization;
+    }
     
     const projectId = generateProjectId({ organization, projectName });
-    // Allow manual GROUP_ID override via environment variable
     const groupId = Deno.env.get("GROUP_ID") || `project-${projectId}`;
-    const context: ProjectContext = {
+    
+    return {
       projectId,
       groupId,
       projectPath: gitRoot,
       projectName,
-      gitRemote: gitRemote || undefined,
+      gitRemote: gitRemoteInfo?.url,
       projectType: 'git',
       organization
     };
-    
-    return context;
   }
   
   // Fallback to directory-based detection
