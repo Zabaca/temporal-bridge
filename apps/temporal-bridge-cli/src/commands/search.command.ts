@@ -1,5 +1,5 @@
+import { type UnifiedMemoryQuery, retrieveMemory } from '@temporal-bridge/core';
 import { Command, CommandRunner, Option } from 'nest-commander';
-import { retrieveMemory, type UnifiedMemoryQuery } from '@temporal-bridge/core';
 
 interface SearchOptions {
   query?: string;
@@ -18,18 +18,36 @@ interface SearchOptions {
   description: 'Search and retrieve memories from Zep temporal knowledge graphs',
 })
 export class SearchCommand extends CommandRunner {
-  async run(passedParams: string[], options?: SearchOptions): Promise<void> {
+  async run(_passedParams: string[], options?: SearchOptions): Promise<void> {
     const searchOptions: UnifiedMemoryQuery = {};
 
-    if (options?.query) searchOptions.query = options.query;
-    if (options?.thread) searchOptions.threadId = options.thread;
-    if (options?.user) searchOptions.userId = options.user;
-    if (options?.limit) searchOptions.limit = options.limit;
-    if (options?.scope) searchOptions.searchScope = options.scope;
-    if (options?.minRating) searchOptions.minRating = options.minRating;
-    if (options?.reranker) searchOptions.reranker = options.reranker;
-    if (options?.debugListProjects) searchOptions.debugListProjects = true;
-    if (options?.debugPortfolio) searchOptions.debugPortfolio = true;
+    if (options?.query) {
+      searchOptions.query = options.query;
+    }
+    if (options?.thread) {
+      searchOptions.threadId = options.thread;
+    }
+    if (options?.user) {
+      searchOptions.userId = options.user;
+    }
+    if (options?.limit) {
+      searchOptions.limit = options.limit;
+    }
+    if (options?.scope) {
+      searchOptions.searchScope = options.scope;
+    }
+    if (options?.minRating) {
+      searchOptions.minRating = options.minRating;
+    }
+    if (options?.reranker) {
+      searchOptions.reranker = options.reranker;
+    }
+    if (options?.debugListProjects) {
+      searchOptions.debugListProjects = true;
+    }
+    if (options?.debugPortfolio) {
+      searchOptions.debugPortfolio = true;
+    }
 
     try {
       const results = await retrieveMemory(searchOptions);
@@ -69,7 +87,7 @@ export class SearchCommand extends CommandRunner {
     description: 'Maximum number of results',
   })
   parseLimit(value: string): number {
-    return parseInt(value, 10);
+    return Number.parseInt(value, 10);
   }
 
   @Option({
@@ -86,7 +104,7 @@ export class SearchCommand extends CommandRunner {
     description: 'Minimum relevance rating',
   })
   parseMinRating(value: string): number {
-    return parseFloat(value);
+    return Number.parseFloat(value);
   }
 
   @Option({

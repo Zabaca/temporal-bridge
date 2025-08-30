@@ -63,6 +63,9 @@ importers:
       '@getzep/zep-cloud':
         specifier: ^3.2.0
         version: 3.4.1
+      '@nestjs/common':
+        specifier: ^10.4.4
+        version: 10.4.20(reflect-metadata@0.2.2)(rxjs@7.8.2)
       yaml:
         specifier: ^2.6.1
         version: 2.8.1

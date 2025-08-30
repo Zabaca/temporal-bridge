@@ -91,7 +91,7 @@ export interface ProjectEntityProperties {
 
 export interface ProjectEntity {
   /** Zep entity type */
-  type: "Project";
+  type: 'Project';
   /** Unique project identifier (same as projectId) */
   name: string;
   /** Rich project metadata */
@@ -99,12 +99,12 @@ export interface ProjectEntity {
 }
 
 // Standard Relationship Types for Project Entities
-export type ProjectRelationshipType = 
-  | "WORKS_ON"      // developer WORKS_ON project
-  | "USES"          // project USES technology
-  | "BELONGS_TO"    // project BELONGS_TO organization
-  | "OCCURS_IN"     // session OCCURS_IN project
-  | "DISCUSSED_IN"; // topic DISCUSSED_IN project
+export type ProjectRelationshipType =
+  | 'WORKS_ON' // developer WORKS_ON project
+  | 'USES' // project USES technology
+  | 'BELONGS_TO' // project BELONGS_TO organization
+  | 'OCCURS_IN' // session OCCURS_IN project
+  | 'DISCUSSED_IN'; // topic DISCUSSED_IN project
 
 export interface ProjectRelationship {
   /** Subject entity name */
@@ -133,16 +133,16 @@ export interface TechnologyDetection {
   context?: string;
 }
 
-export type TechnologyDetectionSource = 
-  | "package.json"     // Package dependencies
-  | "deno.json"        // Deno configuration
-  | "file_extensions"  // File extension analysis
-  | "framework"        // Framework-specific patterns
-  | "database"         // Database configuration
-  | "docker"           // Containerization
-  | "config_files"     // Other configuration files
-  | "code_patterns"    // Code pattern analysis
-  | "unknown";         // Unknown or fallback source
+export type TechnologyDetectionSource =
+  | 'package.json' // Package dependencies
+  | 'deno.json' // Deno configuration
+  | 'file_extensions' // File extension analysis
+  | 'framework' // Framework-specific patterns
+  | 'database' // Database configuration
+  | 'docker' // Containerization
+  | 'config_files' // Other configuration files
+  | 'code_patterns' // Code pattern analysis
+  | 'unknown'; // Unknown or fallback source
 
 export interface TechnologyDetectionResult {
   /** All detected technologies */

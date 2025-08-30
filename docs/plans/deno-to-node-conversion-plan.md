@@ -57,9 +57,9 @@ Convert the TemporalBridge project from a standalone Deno project to a Node.js/p
 ### Parent Goal 3: Implement CLI App (apps/temporal-bridge-cli) ✓
 - [x] Sub-goal 3.1: Set up NestJS application with nest-commander
 - [x] Sub-goal 3.2: Create CliModule following the established pattern
-- [ ] Sub-goal 3.3: Implement store-conversation command (replaces hook)
+- [x] Sub-goal 3.3: Implement store-conversation command (replaces hook)
 - [x] Sub-goal 3.4: Implement search command with options
-- [ ] Sub-goal 3.5: Implement share-knowledge command
+- [x] Sub-goal 3.5: Implement share-knowledge command
 - [x] Sub-goal 3.6: Add proper CLI entry point with createWithoutRunning pattern
 
 ### Parent Goal 4: Implement MCP Server (apps/temporal-bridge-mcp)
