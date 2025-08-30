@@ -5,7 +5,27 @@
 # Debug files
 *debug*.json
 
-# Deno cache
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# pnpm store
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+coverage/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Deno cache (legacy)
 .deno/
 
 # IDE files

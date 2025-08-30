@@ -1,0 +1,27 @@
+{
+  "name": "@temporal-bridge/core",
+  "version": "1.0.0",
+  "description": "Core business logic for TemporalBridge AI memory system",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@getzep/zep-cloud": "^3.2.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.7",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
