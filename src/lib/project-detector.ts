@@ -80,7 +80,7 @@ function parseGitRemote(remoteUrl: string): { organization?: string; name?: stri
     
     // Handle nested paths: https://host/group/subgroup/repo.git
     const nestedMatch = remoteUrl.match(/^https?:\/\/[^/]+\/(.+?)\/([^/]+?)(?:\.git)?$/);
-    if (nestedMatch) {
+    if (nestedMatch && nestedMatch[1] && nestedMatch[2]) {
       // For nested paths, use the last segment as org and repo
       const pathParts = nestedMatch[1].split('/');
       organization = pathParts[pathParts.length - 1]; // Last group as org

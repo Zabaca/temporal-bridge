@@ -3,9 +3,10 @@
  * Manages the structured .claude-session-id file
  */
 
+import { parse as parseYaml, stringify as stringifyYaml } from "https://deno.land/std@0.220.1/yaml/mod.ts";
 import type { ClaudeSessionInfo } from "./types.ts";
 
-const SESSION_FILE_NAME = ".claude-session-id";
+const SESSION_FILE_NAME = "temporal-bridge.yaml";
 
 /**
  * Read session information from project directory
@@ -15,26 +16,11 @@ export async function readSessionInfo(projectPath: string): Promise<ClaudeSessio
     const sessionFile = `${projectPath}/${SESSION_FILE_NAME}`;
     const content = await Deno.readTextFile(sessionFile);
     
-    // Try to parse as JSON first (new format)
-    try {
-      const sessionInfo = JSON.parse(content) as ClaudeSessionInfo;
-      
-      // Validate required fields
-      if (sessionInfo.sessionId && sessionInfo.lastUpdated) {
-        return sessionInfo;
-      }
-    } catch {
-      // Fall back to legacy format (plain session ID)
-      const sessionId = content.trim();
-      if (sessionId) {
-        return {
-          sessionId,
-          lastUpdated: new Date().toISOString(),
-          metadata: {
-            source: "legacy-migration"
-          }
-        };
-      }
+    const sessionInfo = parseYaml(content) as ClaudeSessionInfo;
+    
+    // Validate required fields
+    if (sessionInfo.sessionId && sessionInfo.lastUpdated) {
+      return sessionInfo;
     }
     
     return null;
@@ -60,7 +46,7 @@ export async function writeSessionInfo(
       lastUpdated: new Date().toISOString()
     };
     
-    await Deno.writeTextFile(sessionFile, JSON.stringify(updatedSessionInfo, null, 2));
+    await Deno.writeTextFile(sessionFile, stringifyYaml(updatedSessionInfo));
   } catch (error) {
     console.error(`❌ Failed to write session file:`, error);
     throw error;
