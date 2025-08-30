@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { ZepService, ZepError, type Reranker } from './zep-client';
+import { type Reranker, ZepError, ZepService } from './zep-client';
 
 export interface FactResult {
   fact: string;
@@ -145,12 +145,10 @@ export class MemoryToolsService {
       }
     }
   }
-}
 
-/**
- * Search for facts and relationships (edges in knowledge graph)
- */
-
+  /**
+   * Search for facts and relationships (edges in knowledge graph)
+   */
   async searchFacts(
     query: string,
     limit = 5,
@@ -185,11 +183,11 @@ export class MemoryToolsService {
     console.error('Search facts error:', error);
     return [];
   }
-}
+  }
 
-/**
- * Search memory across different scopes (edges, nodes, episodes) with optional project filtering
- */
+  /**
+   * Search memory across different scopes (edges, nodes, episodes) with optional project filtering
+   */
   async searchMemory(
     query: string,
     scope: 'edges' | 'nodes' | 'episodes' = 'episodes',
@@ -197,19 +195,16 @@ export class MemoryToolsService {
     reranker?: Reranker,
     projectFilter?: string,
   ): Promise<MemorySearchResult[]> {
-    const config = await this.zepService.getConfigWithProjectContext();
-    const client = this.zepService.getClient();
+    try {
+      // Enhance query with project filter if provided
+      const enhancedQuery = projectFilter ? `${query} ${projectFilter}` : query;
 
-  try {
-    // Enhance query with project filter if provided
-    const enhancedQuery = projectFilter ? `${query} ${projectFilter}` : query;
-
-    const searchResults = await client.graph.search({
-      userId: config.userId || 'developer',
-      query: enhancedQuery,
-      scope,
-      limit,
-      reranker: reranker === 'none' ? undefined : reranker,
+      const searchResults = await this.zepService.graph.search({
+        userId: this.zepService.userId,
+        query: enhancedQuery,
+        scope,
+        limit,
+        reranker,
     });
 
     const results: MemorySearchResult[] = [];

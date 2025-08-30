@@ -3,14 +3,12 @@
  * Injectable NestJS service for interacting with Zep's temporal knowledge graphs
  */
 
-import { Injectable } from '@nestjs/common';
 import { ZepClient, ZepError } from '@getzep/zep-cloud';
+import { Injectable } from '@nestjs/common';
 export { ZepError };
 
 // Re-export common Zep types
-export type Reranker = "rrf" | "mmr" | "node_distance" | "episode_mentions" | "cross_encoder";
-import { type ProjectContext, detectProject } from './project-detector';
-import type { ZepConfig } from './types';
+export type Reranker = 'rrf' | 'mmr' | 'node_distance' | 'episode_mentions' | 'cross_encoder';
 
 interface ApiError extends Error {
   statusCode?: number;
@@ -22,14 +20,14 @@ export class ZepService extends ZepClient {
 
   constructor() {
     const apiKey = process.env.ZEP_API_KEY;
-    
+
     if (!apiKey) {
       console.error('❌ ZEP_API_KEY environment variable not set');
       throw new Error('ZEP_API_KEY is required');
     }
 
     super({ apiKey });
-    
+
     this.userId = process.env.DEVELOPER_ID || 'developer';
   }
 
@@ -38,7 +36,7 @@ export class ZepService extends ZepClient {
    */
   async ensureUser(userId?: string): Promise<void> {
     const userIdToUse = userId || this.userId;
-    
+
     try {
       await this.user.get(userIdToUse);
     } catch (_error) {
@@ -68,7 +66,7 @@ export class ZepService extends ZepClient {
    */
   async ensureThread(threadId: string, userId?: string): Promise<void> {
     const userIdToUse = userId || this.userId;
-    
+
     try {
       await this.thread.create({
         threadId: threadId,

@@ -414,6 +414,65 @@ async function detectPackageJsonTechnologies(projectPath: string): Promise<Techn
 }
 
 /**
+ * Parse deno config and extract basic technologies
+ */
+function parseDenoBasicTechnologies(config: any, configFile: string): TechnologyDetection[] {
+  const technologies: TechnologyDetection[] = [];
+
+  // Deno itself is present
+  technologies.push({
+    name: 'Deno',
+    confidence: 0.95,
+    source: 'deno.json',
+    context: `Configuration: ${configFile}`,
+  });
+
+  // Check for TypeScript in compilerOptions
+  if (config.compilerOptions) {
+    technologies.push({
+      name: 'TypeScript',
+      confidence: 0.9,
+      source: 'deno.json',
+      context: 'Compiler options present',
+    });
+  }
+
+  return technologies;
+}
+
+/**
+ * Extract technologies from deno imports configuration
+ */
+function parseDenoImportTechnologies(imports: Record<string, any>): TechnologyDetection[] {
+  const technologies: TechnologyDetection[] = [];
+  
+  const importMap: Record<string, { name: string; confidence: number }> = {
+    react: { name: 'React', confidence: 0.9 },
+    preact: { name: 'Preact', confidence: 0.9 },
+    fresh: { name: 'Fresh', confidence: 0.95 },
+    oak: { name: 'Oak', confidence: 0.9 },
+    hono: { name: 'Hono', confidence: 0.9 },
+    '@std/': { name: 'Deno Standard Library', confidence: 0.85 },
+    'std/': { name: 'Deno Standard Library', confidence: 0.85 },
+  };
+
+  for (const [importKey, importValue] of Object.entries(imports)) {
+    for (const [pattern, tech] of Object.entries(importMap)) {
+      if (importKey.includes(pattern) || (typeof importValue === 'string' && importValue.includes(pattern))) {
+        technologies.push({
+          name: tech.name,
+          confidence: tech.confidence,
+          source: 'deno.json',
+          context: `Import: ${importKey}`,
+        });
+      }
+    }
+  }
+
+  return technologies;
+}
+
+/**
  * Detect technologies from deno.json/deno.jsonc configuration
  */
 async function detectDenoTechnologies(projectPath: string): Promise<TechnologyDetection[]> {
@@ -428,50 +487,12 @@ async function detectDenoTechnologies(projectPath: string): Promise<TechnologyDe
         const content = await readFile(configPath, 'utf-8');
         const config = JSON.parse(content);
 
-        // Deno itself is present
-        technologies.push({
-          name: 'Deno',
-          confidence: 0.95,
-          source: 'deno.json',
-          context: `Configuration: ${configFile}`,
-        });
+        // Extract basic technologies
+        technologies.push(...parseDenoBasicTechnologies(config, configFile));
 
-        // Check for TypeScript in compilerOptions
-        if (config.compilerOptions) {
-          technologies.push({
-            name: 'TypeScript',
-            confidence: 0.9,
-            source: 'deno.json',
-            context: 'Compiler options present',
-          });
-        }
-
-        // Check imports for frameworks
+        // Extract import-based technologies
         if (config.imports) {
-          const imports = config.imports;
-
-          const importMap: Record<string, { name: string; confidence: number }> = {
-            react: { name: 'React', confidence: 0.9 },
-            preact: { name: 'Preact', confidence: 0.9 },
-            fresh: { name: 'Fresh', confidence: 0.95 },
-            oak: { name: 'Oak', confidence: 0.9 },
-            hono: { name: 'Hono', confidence: 0.9 },
-            '@std/': { name: 'Deno Standard Library', confidence: 0.85 },
-            'std/': { name: 'Deno Standard Library', confidence: 0.85 },
-          };
-
-          for (const [importKey, importValue] of Object.entries(imports)) {
-            for (const [pattern, tech] of Object.entries(importMap)) {
-              if (importKey.includes(pattern) || (typeof importValue === 'string' && importValue.includes(pattern))) {
-                technologies.push({
-                  name: tech.name,
-                  confidence: tech.confidence,
-                  source: 'deno.json',
-                  context: `Import: ${importKey}`,
-                });
-              }
-            }
-          }
+          technologies.push(...parseDenoImportTechnologies(config.imports));
         }
 
         break; // Found config, no need to check other files

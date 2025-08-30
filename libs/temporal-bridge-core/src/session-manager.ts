@@ -6,7 +6,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { Injectable } from '@nestjs/common';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import type { ClaudeSessionInfo, TechnologyDetectionSource, ProjectRelationshipType } from './types';
+import type { ClaudeSessionInfo, ProjectRelationshipType, TechnologyDetectionSource } from './types';
 
 interface ProjectEntity {
   name: string;
@@ -121,28 +121,35 @@ export class SessionManager {
               displayName: result.projectEntity.properties?.displayName,
               organization: result.projectEntity.properties?.organization,
               projectPath: result.projectEntity.properties?.path || projectPath,
-              projectType: (result.projectEntity.properties?.projectType as 'git' | 'directory' | 'unknown') || 'unknown',
+              projectType:
+                (result.projectEntity.properties?.projectType as 'git' | 'directory' | 'unknown') || 'unknown',
               repository: result.projectEntity.properties?.repository,
             }
           : undefined,
-        technologies: result.technologies as Array<{
-          name: string;
-          confidence: number;
-          source: TechnologyDetectionSource;
-          version?: string;
-          context?: string;
-        }> | undefined,
-        relationships: result.relationships as Array<{
-          subject: string;
-          predicate: ProjectRelationshipType;
-          object: string;
-          confidence: number;
-          context?: string;
-        }> | undefined,
-        rawResponses: result.rawResponses as {
-          entityCreation?: unknown;
-          relationshipCreation?: unknown;
-        } | undefined,
+        technologies: result.technologies as
+          | Array<{
+              name: string;
+              confidence: number;
+              source: TechnologyDetectionSource;
+              version?: string;
+              context?: string;
+            }>
+          | undefined,
+        relationships: result.relationships as
+          | Array<{
+              subject: string;
+              predicate: ProjectRelationshipType;
+              object: string;
+              confidence: number;
+              context?: string;
+            }>
+          | undefined,
+        rawResponses: result.rawResponses as
+          | {
+              entityCreation?: unknown;
+              relationshipCreation?: unknown;
+            }
+          | undefined,
         performance: result.performance,
         errors: result.errors,
       },
@@ -348,24 +355,30 @@ export async function markProjectEntityProcessed(
             repository: result.projectEntity.properties?.repository,
           }
         : undefined,
-      technologies: result.technologies as Array<{
-        name: string;
-        confidence: number;
-        source: TechnologyDetectionSource;
-        version?: string;
-        context?: string;
-      }> | undefined,
-      relationships: result.relationships as Array<{
-        subject: string;
-        predicate: ProjectRelationshipType;
-        object: string;
-        confidence: number;
-        context?: string;
-      }> | undefined,
-      rawResponses: result.rawResponses as {
-        entityCreation?: unknown;
-        relationshipCreation?: unknown;
-      } | undefined,
+      technologies: result.technologies as
+        | Array<{
+            name: string;
+            confidence: number;
+            source: TechnologyDetectionSource;
+            version?: string;
+            context?: string;
+          }>
+        | undefined,
+      relationships: result.relationships as
+        | Array<{
+            subject: string;
+            predicate: ProjectRelationshipType;
+            object: string;
+            confidence: number;
+            context?: string;
+          }>
+        | undefined,
+      rawResponses: result.rawResponses as
+        | {
+            entityCreation?: unknown;
+            relationshipCreation?: unknown;
+          }
+        | undefined,
       performance: result.performance,
       errors: result.errors,
     },

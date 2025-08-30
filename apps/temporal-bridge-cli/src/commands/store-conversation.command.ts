@@ -6,6 +6,7 @@ import {
   ProjectEntitiesService,
   SessionManager,
   ZepClient,
+  detectProject,
   ensureThread,
   ensureUser,
   getDefaultConfigAsync,
@@ -145,7 +146,12 @@ export class StoreConversationCommand extends CommandRunner {
     const largeMessages = newMessages.filter((m) => m.content.length > 2400);
 
     if (shortMessages.length > 0) {
-      await this.zepClient.thread.addMessages(threadId, { messages: shortMessages });
+      const zepMessages = shortMessages.map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        name: msg.name,
+        content: msg.content,
+      }));
+      await this.zepClient.thread.addMessages(threadId, { messages: zepMessages });
       console.log(`✅ Sent ${shortMessages.length} short messages to user thread`);
       for (const msg of shortMessages) {
         if (msg.uuid) {
