@@ -465,16 +465,16 @@ export class ProjectEntitiesService {
       console.log(`⚠️  Project entity deletion not implemented yet. Would delete: ${projectId}`);
       console.log('Note: Zep handles entity deduplication automatically, so explicit deletion may not be needed.');
 
-      return {
+      return Promise.resolve({
         success: true,
         message: `Project entity deletion logged for: ${projectId}`,
-      };
+      });
     } catch (error) {
       console.error('❌ Failed to delete project entity:', error);
-      return {
+      return Promise.resolve({
         success: false,
         error: `Failed to delete project entity: ${(error as Error).message}`,
-      };
+      });
     }
   }
 
@@ -581,4 +581,28 @@ export class ProjectEntitiesService {
       };
     }
   }
+}
+
+// Export standalone functions for backward compatibility
+const projectEntitiesServiceInstance = new ProjectEntitiesService();
+
+export async function listProjectEntities(): Promise<{
+  success: boolean;
+  projects?: unknown[];
+  entities?: ProjectEntity[];
+  count?: number;
+  error?: string;
+}> {
+  const result = await projectEntitiesServiceInstance.listProjectEntities();
+  return {
+    ...result,
+    entities: result.projects as ProjectEntity[],
+  };
+}
+
+export function ensureProjectEntity(
+  projectPath: string,
+  options: EntityCreationOptions = {},
+): Promise<EntityCreationResult> {
+  return projectEntitiesServiceInstance.ensureProjectEntity(projectPath, options);
 }

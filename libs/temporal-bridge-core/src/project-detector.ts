@@ -569,7 +569,7 @@ async function detectFileExtensionTechnologies(projectPath: string): Promise<Tec
 /**
  * Detect frameworks based on configuration files and patterns
  */
-async function detectFrameworkTechnologies(projectPath: string): Promise<TechnologyDetection[]> {
+function detectFrameworkTechnologies(projectPath: string): Promise<TechnologyDetection[]> {
   const technologies: TechnologyDetection[] = [];
 
   const frameworkConfigs: Record<string, { name: string; confidence: number; files: string[] }> = {
@@ -613,7 +613,7 @@ async function detectFrameworkTechnologies(projectPath: string): Promise<Technol
     }
   }
 
-  return technologies;
+  return Promise.resolve(technologies);
 }
 
 /**
@@ -684,7 +684,7 @@ async function detectDatabaseTechnologies(projectPath: string): Promise<Technolo
 /**
  * Detect containerization technologies
  */
-async function detectContainerTechnologies(projectPath: string): Promise<TechnologyDetection[]> {
+function detectContainerTechnologies(projectPath: string): Promise<TechnologyDetection[]> {
   const technologies: TechnologyDetection[] = [];
 
   const containerConfigs: Record<string, { name: string; confidence: number }> = {
@@ -713,7 +713,7 @@ async function detectContainerTechnologies(projectPath: string): Promise<Technol
     }
   }
 
-  return technologies;
+  return Promise.resolve(technologies);
 }
 
 /**

@@ -19,13 +19,10 @@ export * from './project-entities';
 
 // Main exports for common use cases
 export {
-  // Client setup
-  createZepClient,
-  getDefaultConfig,
-  getDefaultConfigAsync,
-  ensureUser,
-  ensureThread,
-  ZepClient,
+  // Zep service
+  ZepService,
+  ZepError,
+  type Reranker,
 } from './zep-client';
 
 export {
@@ -48,6 +45,8 @@ export {
 export {
   // Project entities
   ProjectEntitiesService,
+  listProjectEntities,
+  ensureProjectEntity,
 } from './project-entities';
 
 export {

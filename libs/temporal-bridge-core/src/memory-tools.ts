@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { createZepClient, getDefaultConfig, getDefaultConfigAsync } from './zep-client';
+import { ZepService, ZepError, type Reranker } from './zep-client';
 
 export interface FactResult {
   fact: string;
@@ -40,6 +40,7 @@ export interface ThreadContextResult {
  */
 @Injectable()
 export class MemoryToolsService {
+  constructor(private readonly zepService: ZepService) {}
   /**
    * Share knowledge to project group graph
    */
@@ -55,7 +56,7 @@ export class MemoryToolsService {
         throw new Error('Message is too long (max 10,000 characters)');
       }
 
-      const config = await getDefaultConfigAsync();
+      const config = await this.zepService.getConfigWithProjectContext();
       if (!config.projectContext) {
         throw new Error("No project context available. Make sure you're in a project directory.");
       }
@@ -88,7 +89,7 @@ export class MemoryToolsService {
       console.error('❌ Error sharing to project group:', error);
       return {
         success: false,
-        message: `❌ Failed to share knowledge: ${(error as any).message}`,
+        message: `❌ Failed to share knowledge: ${(error as Error).message}`,
       };
     }
   }
@@ -97,7 +98,7 @@ export class MemoryToolsService {
    * Add content to project group graph
    */
   private async addToProjectGroup(graphId: string, content: string, metadata?: Record<string, unknown>): Promise<void> {
-    const client = createZepClient();
+    const client = this.zepService.getClient();
     try {
       await client.graph.add({
         graphId,
@@ -115,7 +116,7 @@ export class MemoryToolsService {
    * Ensure project group exists, create if needed
    */
   private async ensureProjectGroup(graphId: string, projectName: string): Promise<void> {
-    const client = createZepClient();
+    const client = this.zepService.getClient();
     try {
       await client.graph.search({
         graphId,
@@ -124,7 +125,8 @@ export class MemoryToolsService {
       });
     } catch (error) {
       // If 404 or similar, group doesn\'t exist, create it
-      if ((error as any).status === 404 || (error as any).statusCode === 404) {
+      const zepError = error as ZepError;
+      if (zepError.statusCode === 404) {
         try {
           await client.graph.create({
             graphId,
@@ -133,7 +135,8 @@ export class MemoryToolsService {
           });
           console.log(`✅ Created project group: ${graphId}`);
         } catch (createError) {
-          if (!(createError as any).message?.includes('already exists')) {
+          const createZepError = createError as ZepError;
+          if (!createZepError.message?.includes('already exists')) {
             throw createError;
           }
         }
@@ -148,22 +151,20 @@ export class MemoryToolsService {
  * Search for facts and relationships (edges in knowledge graph)
  */
 
-export async function searchFacts(
-  query: string,
-  limit = 5,
-  minRating?: number,
-  reranker: 'cross_encoder' | 'none' = 'cross_encoder',
-): Promise<FactResult[]> {
-  const config = await getDefaultConfigAsync();
-  const client = createZepClient();
+  async searchFacts(
+    query: string,
+    limit = 5,
+    minRating?: number,
+    reranker?: Reranker,
+  ): Promise<FactResult[]> {
 
-  try {
-    const searchResults = await client.graph.search({
-      userId: config.userId || 'developer',
+    try {
+      const searchResults = await this.zepService.graph.search({
+        userId: this.zepService.userId,
       query,
       scope: 'edges',
       limit,
-      reranker: reranker as any,
+      reranker: reranker === 'none' ? undefined : reranker,
     });
 
     if (!searchResults?.edges) {
@@ -189,15 +190,15 @@ export async function searchFacts(
 /**
  * Search memory across different scopes (edges, nodes, episodes) with optional project filtering
  */
-export async function searchMemory(
-  query: string,
-  scope: 'edges' | 'nodes' | 'episodes' = 'episodes',
-  limit = 5,
-  reranker: 'cross_encoder' | 'none' = 'cross_encoder',
-  projectFilter?: string,
-): Promise<MemorySearchResult[]> {
-  const config = await getDefaultConfigAsync();
-  const client = createZepClient();
+  async searchMemory(
+    query: string,
+    scope: 'edges' | 'nodes' | 'episodes' = 'episodes',
+    limit = 5,
+    reranker?: Reranker,
+    projectFilter?: string,
+  ): Promise<MemorySearchResult[]> {
+    const config = await this.zepService.getConfigWithProjectContext();
+    const client = this.zepService.getClient();
 
   try {
     // Enhance query with project filter if provided
@@ -206,9 +207,9 @@ export async function searchMemory(
     const searchResults = await client.graph.search({
       userId: config.userId || 'developer',
       query: enhancedQuery,
-      scope: scope as any,
+      scope,
       limit,
-      reranker: reranker as any,
+      reranker: reranker === 'none' ? undefined : reranker,
     });
 
     const results: MemorySearchResult[] = [];
@@ -268,7 +269,7 @@ export async function searchMemory(
             role_type: episode.roleType,
             source: episode.source,
             session_id: episode.sessionId,
-            thread_id: (episode as any).threadId,
+            thread_id: (episode as { threadId?: string }).threadId,
           },
         });
       }
@@ -285,8 +286,9 @@ export async function searchMemory(
  * Get comprehensive context for a specific thread
  */
 export async function getThreadContext(threadId: string, minRating?: number): Promise<ThreadContextResult> {
-  const config = await getDefaultConfigAsync();
-  const client = createZepClient();
+  const zepService = new ZepService();
+  const config = await zepService.getConfigWithProjectContext();
+  const client = zepService.getClient();
 
   try {
     // Get user context for the thread
@@ -296,15 +298,16 @@ export async function getThreadContext(threadId: string, minRating?: number): Pr
 
     // Extract facts if available
     const facts: FactResult[] = [];
-    if ((userContext as any).facts) {
-      for (const fact of (userContext as any).facts) {
+    const contextWithFacts = userContext as { facts?: Array<{ fact?: string; rating?: number; created_at?: string; valid_at?: string; expired_at?: string; source_episodes?: string[]; episodes?: string[] }> };
+    if (contextWithFacts.facts) {
+      for (const fact of contextWithFacts.facts) {
         facts.push({
           fact: fact.fact || 'Unknown fact',
           score: fact.rating || 0,
           created_at: fact.created_at || new Date().toISOString(),
           valid_at: fact.valid_at,
           expired_at: fact.expired_at,
-          source_episodes: fact.episodes || [],
+          source_episodes: fact.source_episodes || fact.episodes || [],
         });
       }
     }
@@ -347,8 +350,9 @@ export async function getThreadContext(threadId: string, minRating?: number): Pr
  * Get recent episodes for context building
  */
 export async function getRecentEpisodes(limit = 10): Promise<MemorySearchResult[]> {
-  const config = await getDefaultConfigAsync();
-  const client = createZepClient();
+  const zepService = new ZepService();
+  const config = await zepService.getConfigWithProjectContext();
+  const client = zepService.getClient();
 
   try {
     const episodeResponse = await client.graph.episode.getByUserId(config.userId || 'developer', { lastn: limit });
@@ -385,7 +389,7 @@ export interface UnifiedMemoryQuery {
   limit?: number;
   searchScope?: 'edges' | 'nodes' | 'episodes';
   minRating?: number;
-  reranker?: 'cross_encoder' | 'none';
+  reranker?: 'cross_encoder';
   debugListProjects?: boolean;
   debugPortfolio?: boolean;
   debugCreateEntity?: boolean;
@@ -414,7 +418,8 @@ export interface UnifiedMemoryResult {
  * Get current thread ID from project session file
  */
 export async function getCurrentThreadId(): Promise<string> {
-  const _config = getDefaultConfig();
+  const zepService = new ZepService();
+  const _config = zepService.getConfig();
   const projectPath = process.env.PROJECT_DIR || process.cwd();
 
   try {
@@ -441,7 +446,7 @@ export async function getCurrentThreadId(): Promise<string> {
  */
 export async function getCurrentContext(): Promise<ThreadContextResult> {
   try {
-    const config = await getDefaultConfigAsync();
+    const config = await this.zepService.getConfigWithProjectContext();
     const projectPath = process.env.PROJECT_DIR || process.cwd();
 
     // Debug logging
@@ -620,9 +625,9 @@ export async function searchProjectMemory(
   graphId: string,
   scope: 'edges' | 'nodes' | 'episodes' = 'edges',
   limit = 10,
-  reranker: 'cross_encoder' | 'none' = 'cross_encoder',
+  reranker?: 'cross_encoder',
 ): Promise<MemorySearchResult[]> {
-  const client = createZepClient();
+  const client = this.zepService.getClient();
 
   try {
     const searchResults = await client.graph.search({
@@ -715,7 +720,7 @@ export async function addToProjectGroup(
   content: string,
   metadata?: Record<string, unknown>,
 ): Promise<void> {
-  const client = createZepClient();
+  const client = this.zepService.getClient();
 
   try {
     await client.graph.add({
@@ -734,7 +739,7 @@ export async function addToProjectGroup(
  * Ensure project group exists, create if needed
  */
 export async function ensureProjectGroup(graphId: string, projectName: string): Promise<void> {
-  const client = createZepClient();
+  const client = this.zepService.getClient();
 
   try {
     // Try to check if group exists by searching it
@@ -785,7 +790,7 @@ export async function shareToProjectGroup(
     }
 
     // Get project context
-    const config = await getDefaultConfigAsync();
+    const config = await this.zepService.getConfigWithProjectContext();
 
     if (!config.projectContext) {
       throw new Error("No project context available. Make sure you're in a project directory.");
@@ -876,8 +881,8 @@ export async function searchPersonalWithProjectFilter(
   scope: 'edges' | 'nodes' | 'episodes' = 'episodes',
   limit = 5,
 ): Promise<MemorySearchResult[]> {
-  const client = createZepClient();
-  const config = await getDefaultConfigAsync();
+  const client = this.zepService.getClient();
+  const config = await this.zepService.getConfigWithProjectContext();
   const userId = config.userId || 'developer';
 
   try {
@@ -887,7 +892,7 @@ export async function searchPersonalWithProjectFilter(
     const searchResults = await client.graph.search({
       userId,
       query: enhancedQuery,
-      scope: scope as any,
+      scope,
       limit,
       reranker: 'cross_encoder' as any,
     });
@@ -968,8 +973,8 @@ export async function searchPersonalWithProjectFilter(
  * Get project portfolio overview
  */
 export async function getProjectPortfolio(): Promise<ProjectPortfolioResult[]> {
-  const client = createZepClient();
-  const config = await getDefaultConfigAsync();
+  const client = this.zepService.getClient();
+  const config = await this.zepService.getConfigWithProjectContext();
   const userId = config.userId || 'developer';
 
   try {
@@ -1055,8 +1060,8 @@ export async function getProjectPortfolio(): Promise<ProjectPortfolioResult[]> {
  * Get technology expertise analysis
  */
 export async function getTechnologyExpertise(technology?: string): Promise<TechnologyExpertiseResult[]> {
-  const client = createZepClient();
-  const config = await getDefaultConfigAsync();
+  const client = this.zepService.getClient();
+  const config = await this.zepService.getConfigWithProjectContext();
   const userId = config.userId || 'developer';
 
   try {
@@ -1128,8 +1133,8 @@ export async function analyzeCrossProjectPatterns(
   }>;
   totalMatches: number;
 }> {
-  const client = createZepClient();
-  const config = await getDefaultConfigAsync();
+  const client = this.zepService.getClient();
+  const config = await this.zepService.getConfigWithProjectContext();
   const userId = config.userId || 'developer';
 
   try {
@@ -1211,8 +1216,8 @@ export async function searchProjectConversations(
   query?: string,
   limit = 10,
 ): Promise<MemorySearchResult[]> {
-  const client = createZepClient();
-  const config = await getDefaultConfigAsync();
+  const client = this.zepService.getClient();
+  const config = await this.zepService.getConfigWithProjectContext();
   const userId = config.userId || 'developer';
 
   try {
