@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { detectProject, detectProjectTechnologies } from './project-detector';
 import type { ProjectContext } from './project-detector';
+import { detectProject, detectProjectTechnologies } from './project-detector';
 import type {
   EntityCreationOptions,
   ProjectEntity,
@@ -44,7 +44,6 @@ export class ProjectEntitiesService {
    */
   async ensureProjectEntity(projectPath: string, options: EntityCreationOptions = {}): Promise<EntityCreationResult> {
     try {
-
       const projectContext = await detectProject(projectPath);
 
       const techDetection = await this.detectTechnologies(projectContext, options);

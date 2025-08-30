@@ -5,7 +5,7 @@
 
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { readFile, readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import type { TechnologyDetection, TechnologyDetectionResult } from './types';
 
@@ -445,7 +445,7 @@ function parseDenoBasicTechnologies(config: any, configFile: string): Technology
  */
 function parseDenoImportTechnologies(imports: Record<string, any>): TechnologyDetection[] {
   const technologies: TechnologyDetection[] = [];
-  
+
   const importMap: Record<string, { name: string; confidence: number }> = {
     react: { name: 'React', confidence: 0.9 },
     preact: { name: 'Preact', confidence: 0.9 },

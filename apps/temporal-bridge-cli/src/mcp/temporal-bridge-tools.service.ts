@@ -16,27 +16,26 @@ export class TemporalBridgeToolsService {
     parameters: z.object({
       query: z.string().describe('Search query to search personal memories'),
       limit: z.number().optional().default(5).describe('Number of results to return'),
-      reranker: z.enum(['cross_encoder', 'none']).optional().default('cross_encoder').describe('Reranker type for better accuracy'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
     }),
   })
   async searchPersonal(input: { query: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
-    const results = await this.memoryTools.searchMemory(
-      input.query,
-      'episodes',
-      input.limit || 5,
-      input.reranker
-    );
-    
+    const results = await this.memoryTools.searchMemory(input.query, 'episodes', input.limit || 5, input.reranker);
+
     return {
       source: 'personal',
       query: input.query,
-      results: results.map(r => ({
+      results: results.map((r) => ({
         content: r.content,
         score: r.score,
         type: r.type,
         timestamp: r.created_at,
-        metadata: { ...r.metadata, scope: 'personal' }
-      }))
+        metadata: { ...r.metadata, scope: 'personal' },
+      })),
     };
   }
 
@@ -47,7 +46,11 @@ export class TemporalBridgeToolsService {
       query: z.string().describe('Search query for project-specific knowledge'),
       project: z.string().optional().describe('Project name for group graph (defaults to current project)'),
       limit: z.number().optional().default(5).describe('Number of results to return'),
-      reranker: z.enum(['cross_encoder', 'none']).optional().default('cross_encoder').describe('Reranker type for better accuracy'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
     }),
   })
   async searchProject(input: { query: string; project?: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
@@ -57,7 +60,7 @@ export class TemporalBridgeToolsService {
       query: input.query,
       project: input.project || 'current',
       results: [],
-      message: 'Project search functionality will be implemented with project groups'
+      message: 'Project search functionality will be implemented with project groups',
     };
   }
 
@@ -68,21 +71,25 @@ export class TemporalBridgeToolsService {
       query: z.string().describe('Search query to search across all available memories'),
       project: z.string().optional().describe('Project name for group graph (defaults to current project)'),
       limit: z.number().optional().default(5).describe('Number of results per source'),
-      reranker: z.enum(['cross_encoder', 'none']).optional().default('cross_encoder').describe('Reranker type for better accuracy'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
     }),
   })
   async searchAll(input: { query: string; project?: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
-    const personalResults = await this.searchPersonal({ 
-      query: input.query, 
+    const personalResults = await this.searchPersonal({
+      query: input.query,
       limit: input.limit,
-      reranker: input.reranker 
+      reranker: input.reranker,
     });
-    
-    const projectResults = await this.searchProject({ 
-      query: input.query, 
+
+    const projectResults = await this.searchProject({
+      query: input.query,
       project: input.project,
       limit: input.limit,
-      reranker: input.reranker 
+      reranker: input.reranker,
     });
 
     return {
@@ -94,7 +101,7 @@ export class TemporalBridgeToolsService {
   }
 
   @Tool({
-    name: 'get_recent_episodes', 
+    name: 'get_recent_episodes',
     description: 'Get recent conversation episodes for context building',
     parameters: z.object({
       limit: z.number().optional().default(10).describe('Number of recent episodes to return'),
@@ -104,17 +111,17 @@ export class TemporalBridgeToolsService {
     const results = await this.memoryTools.searchMemory(
       '*', // Search all
       'episodes',
-      input.limit || 10
+      input.limit || 10,
     );
 
     return {
-      episodes: results.map(r => ({
+      episodes: results.map((r) => ({
         content: r.content,
         score: r.score,
         timestamp: r.created_at,
-        metadata: r.metadata
+        metadata: r.metadata,
       })),
-      count: results.length
+      count: results.length,
     };
   }
 
@@ -125,7 +132,7 @@ export class TemporalBridgeToolsService {
   })
   async getCurrentContext() {
     const projectContext = await this.projectEntities.getCurrentProjectContext();
-    
+
     return {
       success: projectContext.success,
       project: projectContext.project,
@@ -144,7 +151,7 @@ export class TemporalBridgeToolsService {
   })
   async shareKnowledge(input: { message: string; project?: string }) {
     const result = await this.memoryTools.shareToProjectGroup(input.message, input.project);
-    
+
     return {
       success: result.success,
       message: result.message,
@@ -159,7 +166,7 @@ export class TemporalBridgeToolsService {
   })
   async listProjects() {
     const result = await this.projectEntities.listProjectEntities();
-    
+
     return {
       success: result.success,
       projects: result.projects || [],
@@ -186,7 +193,7 @@ export class TemporalBridgeToolsService {
   })
   async projectTechnologies(input: { projectId: string }) {
     const result = await this.projectEntities.getProjectEntity(input.projectId);
-    
+
     return {
       success: result.success,
       projectId: input.projectId,
@@ -205,8 +212,8 @@ export class TemporalBridgeToolsService {
   })
   async getTechnologyExpertise(input: { technology?: string }) {
     const projectsResult = await this.projectEntities.listProjectEntities();
-    
-    if (!projectsResult.success || !projectsResult.projects) {
+
+    if (!(projectsResult.success && projectsResult.projects)) {
       return {
         success: false,
         error: projectsResult.error || 'Failed to retrieve projects',
@@ -214,11 +221,11 @@ export class TemporalBridgeToolsService {
     }
 
     const expertise: Record<string, { count: number; projects: string[]; avgConfidence?: number }> = {};
-    
+
     for (const project of projectsResult.projects) {
       const projectData = project as any;
       const technologies = projectData.attributes?.technologies;
-      
+
       if (typeof technologies === 'string') {
         const techList = technologies.split(', ');
         for (const tech of techList) {

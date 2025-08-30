@@ -5,7 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { detectProject } from './project-detector';
-import { listProjectEntities, ensureProjectEntity } from './project-entities';
+import { ensureProjectEntity, listProjectEntities } from './project-entities';
 import type { UnifiedMemoryQuery, UnifiedMemoryResult } from './types';
 import { type Reranker, ZepError, ZepService } from './zep-client';
 
@@ -43,8 +43,7 @@ export interface ThreadContextResult {
  */
 @Injectable()
 export class MemoryToolsService {
-  constructor(private readonly zepService: ZepService) {
-  }
+  constructor(private readonly zepService: ZepService) {}
 
   /**
    * Share knowledge to project group graph
@@ -152,12 +151,7 @@ export class MemoryToolsService {
   /**
    * Search for facts and relationships (edges in knowledge graph)
    */
-  async searchFacts(
-    query: string,
-    limit = 5,
-    minRating?: number,
-    reranker?: Reranker,
-  ): Promise<FactResult[]> {
+  async searchFacts(query: string, limit = 5, minRating?: number, reranker?: Reranker): Promise<FactResult[]> {
     try {
       const searchResults = await this.zepService.graph.search({
         userId: this.zepService.userId,
@@ -304,12 +298,12 @@ export class MemoryToolsService {
         console.log('🔍 DEBUG: Creating test project entity\n');
         const projectPath = process.cwd();
         console.log(`Creating entity for project path: ${projectPath}`);
-        
+
         const result = await ensureProjectEntity(projectPath, {
           forceUpdate: true,
           skipTechDetection: false,
         });
-        
+
         console.log('Entity Creation Result:', JSON.stringify(result, null, 2));
         return [];
       }

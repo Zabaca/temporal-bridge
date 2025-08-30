@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { Command, CommandRunner, Option } from 'nest-commander';
 import { MemoryToolsService } from '../lib/memory-tools';
 import type { UnifiedMemoryQuery } from '../lib/types';
-import { Command, CommandRunner, Option } from 'nest-commander';
 
 interface SearchOptions {
   query?: string;

@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
 import { McpModule as ReKogMcpModule } from '@rekog/mcp-nest';
+import { McpTransportType } from '@rekog/mcp-nest/src/mcp/interfaces';
 import { MemoryToolsService, ProjectEntitiesService, SessionManager, ZepService } from '../lib';
 import { TemporalBridgeToolsService } from './temporal-bridge-tools.service';
-import {McpTransportType} from "@rekog/mcp-nest/src/mcp/interfaces";
 
 @Module({
   imports: [
     ReKogMcpModule.forRoot({
       name: 'temporal-bridge',
       version: '1.0.0',
-      instructions: 'AI memory system that creates searchable, temporal knowledge graphs from Claude Code conversations',
+      instructions:
+        'AI memory system that creates searchable, temporal knowledge graphs from Claude Code conversations',
       transport: McpTransportType.STDIO,
     }),
   ],
@@ -19,7 +20,7 @@ import {McpTransportType} from "@rekog/mcp-nest/src/mcp/interfaces";
     MemoryToolsService,
     ProjectEntitiesService,
     SessionManager,
-    
+
     // MCP tools
     TemporalBridgeToolsService,
   ],

@@ -268,9 +268,10 @@ catch (error: Error | unknown) { ... }
 
 ### When Working on TemporalBridge
 1. **Run from project directory**: `cd ~/Projects/zabaca/temporal-bridge`
-4. **Lint code**: `npx biome check` - enforces zero `any` usage
-5. **Verify MCP tools**: Test new project management tools after changes
-6. **Check hook storage**: Verify conversations stored in user graph with project entities
+2. **ALWAYS use lint:fix**: `pnpm run lint:fix` or `npx biome check --write` - automatically fixes linting issues instead of just checking
+3. **Lint code**: `npx biome check` - enforces zero `any` usage  
+4. **Verify MCP tools**: Test new project management tools after changes
+5. **Check hook storage**: Verify conversations stored in user graph with project entities
 
 ### Knowledge Curation Workflow
 1. **Develop personally** - All conversations stored in your user graph

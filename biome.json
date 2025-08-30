@@ -1,13 +1,10 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 120
-  },
-  "organizeImports": {
-    "enabled": true
   },
   "vcs": {
     "enabled": true,
@@ -21,7 +18,7 @@
         "noExcessiveCognitiveComplexity": {
           "level": "error",
           "options": {
-            "maxAllowedComplexity": 20
+            "maxAllowedComplexity": 15
           }
         },
         "noExcessiveNestedTestSuites": "error",
@@ -87,6 +84,7 @@
         "noFallthroughSwitchClause": "error",
         "noImplicitAnyLet": "error",
         "noShadowRestrictedNames": "error",
+        "noVar": "error",
         "useAwait": "error",
         "useDefaultSwitchClauseLast": "error"
       }
@@ -112,13 +110,12 @@
     }
   },
   "files": {
-    "include": ["apps/**", "libs/**"],
-    "ignore": ["**/*.test.ts", "**/*.spec.ts", "**/tests/**", "**/test/**", "coverage/**"],
+    "includes": ["apps/**"],
     "ignoreUnknown": true
   },
   "overrides": [
     {
-      "include": ["**/generated/**", "**/src/generated/**", "apps/*/src/generated/**", "**/*.generated.ts"],
+      "includes": ["**/generated/**", "**/src/generated/**", "apps/*/src/generated/**", "**/*.generated.ts"],
       "linter": {
         "enabled": false
       }

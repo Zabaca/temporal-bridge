@@ -36,8 +36,7 @@
     "removeComments": false,
     "resolveJsonModule": true,
     "paths": {
-      "@temporal-bridge/core": ["libs/temporal-bridge-core/src/index"],
-      "@temporal-bridge/core/*": ["libs/temporal-bridge-core/src/*"]
+      "@/*": ["apps/temporal-bridge-cli/src/*"]
     }
   },
   "exclude": [

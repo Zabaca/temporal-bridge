@@ -3,43 +3,36 @@
  * AI memory system that creates searchable, temporal knowledge graphs
  */
 
-// Types
-export * from './types';
-
-// Core utilities
-export * from './zep-client';
-export * from './project-detector';
-export * from './session-manager';
-
 // Memory and search functionality
 export * from './memory-tools';
-
-// Project entity management
-export * from './project-entities';
-
-// Main exports for common use cases
 export {
-  // Zep service
-  ZepService,
-  ZepError,
-  type Reranker,
-} from './zep-client';
-
+  // Memory search
+  MemoryToolsService,
+} from './memory-tools';
+export * from './project-detector';
 export {
   // Project detection
   detectProject,
   detectProjectTechnologies,
 } from './project-detector';
-
-export {
-  // Memory search
-  MemoryToolsService,
-} from './memory-tools';
-
+// Project entity management
+export * from './project-entities';
 export {
   // Project entities
   ProjectEntitiesService,
 } from './project-entities';
+export * from './session-manager';
+// Types
+export * from './types';
+// Core utilities
+export * from './zep-client';
+// Main exports for common use cases
+export {
+  type Reranker,
+  ZepError,
+  // Zep service
+  ZepService,
+} from './zep-client';
 
 // Legacy functions for CLI compatibility - to be refactored
 export async function listProjectEntities() {
@@ -59,12 +52,12 @@ export async function ensureProjectEntity(projectPath: string, options: any = {}
 }
 
 export {
+  getCurrentSessionId,
+  markProjectEntityProcessed,
   // Session management
   readSessionInfo,
-  writeSessionInfo,
-  updateSessionInfo,
-  getCurrentSessionId,
-  shouldProcessProjectEntity,
-  markProjectEntityProcessed,
   SessionManager,
+  shouldProcessProjectEntity,
+  updateSessionInfo,
+  writeSessionInfo,
 } from './session-manager';

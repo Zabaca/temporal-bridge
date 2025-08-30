@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { MemoryToolsService } from '../lib/memory-tools';
 import { Command, CommandRunner, Option } from 'nest-commander';
+import { MemoryToolsService } from '../lib/memory-tools';
 
 interface ShareKnowledgeOptions {
   project?: string;

@@ -196,6 +196,7 @@ function search(options: SearchOptions): Promise<SearchResult[]> {
 ## 5. Enforcement
 
 - **Linting**: The project uses Biome with `noExplicitAny` rule enabled
+- **Auto-fix**: **ALWAYS use `pnpm run lint:fix` or `npx biome check --write`** to automatically fix linting issues instead of just checking
 - **Code Review**: All PRs must pass lint checks with zero `any` usage
 - **IDE Integration**: Configure your IDE to highlight `any` usage as an error
 

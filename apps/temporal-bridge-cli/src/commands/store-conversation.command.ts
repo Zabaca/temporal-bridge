@@ -2,15 +2,10 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
-import {
-  ProjectEntitiesService,
-  SessionManager,
-  ZepService,
-  detectProject,
-} from '../lib';
-import type { HookData, ParsedMessage, TranscriptMessage } from '../lib/types';
-import type { ProjectContext } from '../lib/project-detector';
 import { Command, CommandRunner, Option } from 'nest-commander';
+import { detectProject, ProjectEntitiesService, SessionManager, ZepService } from '../lib';
+import type { ProjectContext } from '../lib/project-detector';
+import type { HookData, ParsedMessage, TranscriptMessage } from '../lib/types';
 
 interface StoreConversationOptions {
   sessionId: string;

@@ -12,7 +12,10 @@
     "dev:mcp": "tsx src/mcp.ts",
     "start": "node dist/main.js",
     "start:mcp": "node dist/mcp.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@getzep/zep-cloud": "^3.2.0",

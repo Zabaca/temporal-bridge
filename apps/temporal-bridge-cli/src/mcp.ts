@@ -13,7 +13,7 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create(McpModule);
     await app.init();
-    
+
     // The MCP server runs on stdio, so we don't need to listen on a port
     console.error('TemporalBridge MCP Server started');
   } catch (error) {

@@ -72,12 +72,12 @@ Convert the TemporalBridge project from a standalone Deno project to a Node.js/p
 - [x] Sub-goal 4.7: Create mcp.ts entrypoint alongside main.ts
 - [x] Sub-goal 4.8: Add MCP development and production scripts
 
-### Parent Goal 5: Configure Build and Development System
-- [ ] Sub-goal 5.1: Create tsconfig.base.json at root
-- [ ] Sub-goal 5.2: Set up app-specific TypeScript configurations
-- [ ] Sub-goal 5.3: Configure Biome with workspace-aware settings
-- [ ] Sub-goal 5.4: Add development scripts (pnpm dev:cli, pnpm dev:mcp)
-- [ ] Sub-goal 5.5: Add production scripts and build commands
+### Parent Goal 5: Configure Build and Development System ✓
+- [x] Sub-goal 5.1: Create tsconfig.base.json at root
+- [x] Sub-goal 5.2: Set up app-specific TypeScript configurations
+- [x] Sub-goal 5.3: Configure Biome with workspace-aware settings
+- [x] Sub-goal 5.4: Add development scripts (pnpm dev:cli, pnpm dev:mcp)
+- [x] Sub-goal 5.5: Add production scripts and build commands
 
 ### Parent Goal 6: Convert Testing Suite to Vitest
 - [ ] Sub-goal 6.1: Set up Vitest configuration with @golevelup/ts-vitest
