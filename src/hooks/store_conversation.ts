@@ -194,11 +194,23 @@ async function storeConversation(hookData: HookData): Promise<void> {
   await ensureUser(client, userId);
   await ensureThread(client, threadId, userId);
 
+  // ALWAYS update session info first (before any conditional processing)
+  const { updateSessionInfo, shouldProcessProjectEntity, markProjectEntityProcessed } = await import("../lib/session-manager.ts");
+  try {
+    await updateSessionInfo(projectContext.projectPath, {
+      sessionId: hookData.session_id,
+      metadata: {
+        source: "claude-code-hook",
+        projectId: projectContext.projectId
+      }
+    });
+  } catch (sessionError) {
+    console.error(`❌ Failed to write session info file:`, sessionError);
+  }
+
   // Create/update project entity and relationships (optimized - only on first message of session)
   let projectEntityResult;
   try {
-    const { shouldProcessProjectEntity, markProjectEntityProcessed } = await import("../lib/session-manager.ts");
-    
     const shouldCreateEntity = await shouldProcessProjectEntity(
       projectContext.projectPath, 
       hookData.session_id
@@ -323,20 +335,6 @@ async function storeConversation(hookData: HookData): Promise<void> {
 
   // Limit to max 3 messages: user's initial prompt + last 2 assistant messages
   const transactionMessages = limitTransactionMessages(fullTransactionMessages);
-
-  // Write current session info to project directory for current thread detection
-  const { updateSessionInfo } = await import("../lib/session-manager.ts");
-  try {
-    await updateSessionInfo(projectContext.projectPath, {
-      sessionId: hookData.session_id,
-      metadata: {
-        source: "claude-code-hook",
-        projectId: projectContext.projectId
-      }
-    });
-  } catch (sessionError) {
-    console.error(`❌ Failed to write session info file:`, sessionError);
-  }
 
   // DEBUG: Write parsed messages to debug file
   const debugFile = `/home/uptown/.claude/temporal-bridge-debug-${hookData.session_id}.json`;

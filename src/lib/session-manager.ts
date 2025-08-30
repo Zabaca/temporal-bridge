@@ -31,6 +31,34 @@ export async function readSessionInfo(projectPath: string): Promise<ClaudeSessio
 }
 
 /**
+ * Remove undefined values from an object recursively to make it YAML-serializable
+ */
+function removeUndefinedValues(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return undefined;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefinedValues).filter(item => item !== undefined);
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        const cleanedValue = removeUndefinedValues(value);
+        if (cleanedValue !== undefined) {
+          cleaned[key] = cleanedValue;
+        }
+      }
+    }
+    return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+  }
+  
+  return obj;
+}
+
+/**
  * Write session information to project directory
  */
 export async function writeSessionInfo(
@@ -46,7 +74,10 @@ export async function writeSessionInfo(
       lastUpdated: new Date().toISOString()
     };
     
-    await Deno.writeTextFile(sessionFile, stringifyYaml(updatedSessionInfo));
+    // Remove undefined values to prevent YAML serialization errors
+    const cleanedSessionInfo = removeUndefinedValues(updatedSessionInfo);
+    
+    await Deno.writeTextFile(sessionFile, stringifyYaml(cleanedSessionInfo));
   } catch (error) {
     console.error(`❌ Failed to write session file:`, error);
     throw error;
@@ -78,6 +109,7 @@ export async function updateSessionInfo(
   };
   
   await writeSessionInfo(projectPath, updated);
+  
   return updated;
 }
 
@@ -98,17 +130,22 @@ export async function shouldProcessProjectEntity(
 ): Promise<boolean> {
   const sessionInfo = await readSessionInfo(projectPath);
   
-  // If no session info or different session, process
-  if (!sessionInfo || sessionInfo.sessionId !== sessionId) {
+  // If no session info, process
+  if (!sessionInfo) {
     return true;
   }
   
-  // If no cache info, process
+  // If different session ID, process  
+  if (sessionInfo.sessionId !== sessionId) {
+    return true;
+  }
+  
+  // If no project entity cache exists, process
   if (!sessionInfo.projectEntityCache?.lastProcessed) {
     return true;
   }
-  
-  // Cache exists for this session, skip processing
+
+  // Project entity already processed for this session
   return false;
 }
 
