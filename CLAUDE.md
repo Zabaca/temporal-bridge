@@ -288,6 +288,9 @@ catch (error: Error | unknown) { ... }
 
 ### Available Test Commands
 ```bash
+pnpm test           # Run all tests
+pnpm test:watch     # Run tests in watch mode  
+pnpm test:coverage  # Run tests with coverage report
 ```
 
 ### Test Categories
