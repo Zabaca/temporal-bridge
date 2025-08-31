@@ -341,4 +341,24 @@ export class TemporalBridgeToolsService {
       };
     }
   }
+
+  @Tool({
+    name: 'list_entity_types',
+    description: 'List all entity types available in Zep knowledge graphs',
+    parameters: z.object({}),
+  })
+  async listEntityTypes() {
+    try {
+      await this.zepService.ensureUser();
+      const entityTypes = await this.zepService.graph.listEntityTypes();
+      
+      return {
+        entity_types: entityTypes,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('Error listing entity types:', error);
+      throw new Error(`Failed to list entity types: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
