@@ -262,8 +262,7 @@ describe('Zep API Integration Test', () => {
       });
 
       // Simulate how StoreConversationCommand would use the service
-      await mockZepService.thread.addMessages({
-        threadId: 'claude-code-session-abc123',
+      await mockZepService.thread.addMessages('claude-code-session-abc123', {
         messages: [
           {
             role: 'user',
@@ -273,10 +272,12 @@ describe('Zep API Integration Test', () => {
         ],
       });
 
-      expect(mockZepService.thread.addMessages).toHaveBeenCalledWith({
-        threadId: 'claude-code-session-abc123',
-        messages: expect.any(Array),
-      });
+      expect(mockZepService.thread.addMessages).toHaveBeenCalledWith(
+        'claude-code-session-abc123',
+        {
+          messages: expect.any(Array),
+        }
+      );
     });
   });
 

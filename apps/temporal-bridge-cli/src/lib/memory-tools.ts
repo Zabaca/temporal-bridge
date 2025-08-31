@@ -215,7 +215,7 @@ export class MemoryToolsService {
     return await this.zepService.graph.search({
       userId: this.zepService.userId,
       query: enhancedQuery,
-      scope,
+      scope: scope as 'edges' | 'nodes' | 'episodes',
       limit,
       reranker: reranker === 'none' ? undefined : reranker,
     });
