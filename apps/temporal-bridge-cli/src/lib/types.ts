@@ -17,8 +17,41 @@ export interface MemoryResult {
   content: string;
   score?: number;
   timestamp?: string;
-  metadata?: any;
+  metadata?: unknown;
   type: 'memory_context' | 'thread_message' | 'graph_search' | 'user_context';
+}
+
+// Enhanced search types for CLI compatibility
+export interface UnifiedMemoryQuery {
+  query?: string;
+  threadId?: string;
+  userId?: string;
+  limit?: number;
+  searchScope?: 'edges' | 'nodes' | 'episodes';
+  minRating?: number;
+  reranker?: 'cross_encoder' | 'none';
+  debugListProjects?: boolean;
+  debugPortfolio?: boolean;
+  debugCreateEntity?: boolean;
+}
+
+export interface UnifiedMemoryResult {
+  content: string;
+  score?: number;
+  timestamp?: string;
+  type: 'graph_search' | 'user_context' | 'recent_episodes' | 'current_context';
+  metadata: {
+    scope?: string;
+    thread_id?: string;
+    episode_id?: string;
+    source?: string;
+    processed?: boolean;
+    status?: string;
+    role?: string;
+    facts?: unknown[];
+    recent_messages?: unknown[];
+    [key: string]: unknown;
+  };
 }
 
 export interface HookData {
@@ -37,7 +70,7 @@ export interface TranscriptMessage {
   timestamp?: string;
   uuid?: string;
   parentUuid?: string;
-  message?: any;
+  message?: unknown;
 }
 
 export interface ParsedMessage {
@@ -91,7 +124,7 @@ export interface ProjectEntityProperties {
 
 export interface ProjectEntity {
   /** Zep entity type */
-  type: "Project";
+  type: 'Project';
   /** Unique project identifier (same as projectId) */
   name: string;
   /** Rich project metadata */
@@ -99,12 +132,12 @@ export interface ProjectEntity {
 }
 
 // Standard Relationship Types for Project Entities
-export type ProjectRelationshipType = 
-  | "WORKS_ON"      // developer WORKS_ON project
-  | "USES"          // project USES technology
-  | "BELONGS_TO"    // project BELONGS_TO organization
-  | "OCCURS_IN"     // session OCCURS_IN project
-  | "DISCUSSED_IN"; // topic DISCUSSED_IN project
+export type ProjectRelationshipType =
+  | 'WORKS_ON' // developer WORKS_ON project
+  | 'USES' // project USES technology
+  | 'BELONGS_TO' // project BELONGS_TO organization
+  | 'OCCURS_IN' // session OCCURS_IN project
+  | 'DISCUSSED_IN'; // topic DISCUSSED_IN project
 
 export interface ProjectRelationship {
   /** Subject entity name */
@@ -133,16 +166,16 @@ export interface TechnologyDetection {
   context?: string;
 }
 
-export type TechnologyDetectionSource = 
-  | "package.json"     // Package dependencies
-  | "deno.json"        // Deno configuration
-  | "file_extensions"  // File extension analysis
-  | "framework"        // Framework-specific patterns
-  | "database"         // Database configuration
-  | "docker"           // Containerization
-  | "config_files"     // Other configuration files
-  | "code_patterns"    // Code pattern analysis
-  | "unknown";         // Unknown or fallback source
+export type TechnologyDetectionSource =
+  | 'package.json' // Package dependencies
+  | 'deno.json' // Deno configuration
+  | 'file_extensions' // File extension analysis
+  | 'framework' // Framework-specific patterns
+  | 'database' // Database configuration
+  | 'docker' // Containerization
+  | 'config_files' // Other configuration files
+  | 'code_patterns' // Code pattern analysis
+  | 'unknown'; // Unknown or fallback source
 
 export interface TechnologyDetectionResult {
   /** All detected technologies */
@@ -211,8 +244,8 @@ export interface ClaudeSessionInfo {
     }>;
     /** Raw Zep API responses for debugging */
     rawResponses?: {
-      entityCreation?: any;
-      relationshipCreation?: any;
+      entityCreation?: unknown;
+      relationshipCreation?: unknown;
     };
     /** Processing performance metrics */
     performance?: {

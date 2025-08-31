@@ -7,15 +7,10 @@
     },
     "temporal-bridge": {
       "type": "stdio",
-      "command": "deno",
+      "command": "node",
       "args": [
-        "run",
-        "--allow-env",
-        "--allow-net",
-        "--allow-read",
-        "src/mcp-server.ts"
+        "/home/uptown/Projects/zabaca/temporal-bridge/apps/temporal-bridge-cli/dist/mcp.js"
       ],
-      "cwd": "/home/uptown/Projects/zabaca/temporal-bridge",
       "env": {
         "ZEP_API_KEY": "${ZEP_API_KEY}",
         "PROJECT_DIR": "/home/uptown/Projects/zabaca/temporal-bridge",

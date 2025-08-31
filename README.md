@@ -17,7 +17,8 @@ TemporalBridge transforms Claude Code conversations into a persistent, searchabl
 
 ### Prerequisites
 
-- [Deno](https://deno.land/) runtime
+- [Node.js](https://nodejs.org/) (v18 or higher)
+- [PNPM](https://pnpm.io/) package manager
 - [Zep Cloud](https://cloud.getzep.com) API key
 
 ### Installation
@@ -35,51 +36,49 @@ TemporalBridge transforms Claude Code conversations into a persistent, searchabl
 
 3. Install dependencies:
    ```bash
-   deno task install
+   pnpm install
    ```
 
 ### Basic Usage
 
 **Search your memory:**
+
+Memory search is available through Claude Code's MCP integration. Once configured, use these tools in Claude Code:
+
+- `search_personal` - Search your personal conversation history  
+- `search_project` - Search shared project knowledge
+- `search_all` - Search both personal and project memories
+- `get_recent_episodes` - Get recent conversation context
+- `get_current_context` - Get current project context
+
+**Available CLI commands:**
 ```bash
-# Search for specific topics
-deno task search --query "typescript functions"
-
-# Search nodes (entities)
-deno task search --query "developer" --scope nodes
-
-# Search episodes (conversations)
-deno task search --query "memory integration" --scope episodes
-
-# Get thread context
-deno task search --thread "claude-code-abc123"
-```
-
-**Available commands:**
-```bash
-deno task search     # Run memory search CLI
-deno task hook       # Run conversation storage hook
-deno task check      # Type check all files
-deno task fmt        # Format code
-deno task lint       # Lint code
+pnpm run cli hook                    # Run conversation storage hook
+pnpm run cli store-conversation     # Store conversation transcript
+pnpm run typecheck                  # Type checking
+pnpm run format                     # Code formatting
+pnpm run lint                       # Lint code
+pnpm run test                       # Run tests
 ```
 
 ## 🏗️ Architecture
 
 ### Core Components
 
-- **`src/retrieve_memory.ts`** - Memory search and retrieval CLI
-- **`src/hooks/store_conversation.ts`** - Claude Code hook for auto-storage
-- **`src/lib/types.ts`** - Shared TypeScript interfaces
-- **`src/lib/zep-client.ts`** - Zep client utilities
+- **`apps/temporal-bridge-cli/src/lib/memory-tools.ts`** - Memory search and retrieval functions
+- **`apps/temporal-bridge-cli/src/commands/hook.command.ts`** - Claude Code hook for auto-storage
+- **`apps/temporal-bridge-cli/src/lib/types.ts`** - Shared TypeScript interfaces
+- **`apps/temporal-bridge-cli/src/lib/zep-client.ts`** - Zep client utilities
+- **`apps/temporal-bridge-cli/src/lib/project-entities.ts`** - Project entity management
+- **`apps/temporal-bridge-cli/src/mcp/`** - MCP server integration
 
 ### Data Flow
 
 1. **Conversation Happens** → Claude Code interaction
-2. **Hook Triggers** → `store_conversation.ts` processes transcript
-3. **Smart Storage** → Short messages → thread, Long messages → graph
+2. **Hook Triggers** → `hook.command.ts` processes transcript via store-conversation command
+3. **Smart Storage** → All messages → user graph with project metadata
 4. **Knowledge Extraction** → Zep builds entities and relationships
-5. **Search & Retrieval** → `retrieve_memory.ts` queries knowledge graph
+5. **Search & Retrieval** → Memory tools query knowledge graph via CLI or MCP
 
 ### Search Scopes
 
@@ -96,24 +95,26 @@ deno task lint       # Lint code
 ZEP_API_KEY=your_zep_api_key_here
 
 # Optional
-TEMPORAL_BRIDGE_USER_ID=developer
-TEMPORAL_BRIDGE_DEFAULT_SCOPE=edges
-TEMPORAL_BRIDGE_DEFAULT_LIMIT=10
+DEVELOPER_ID=developer              # Default: "developer"
+GROUP_ID=custom-project-group       # Default: auto-generated
+PROJECT_DIR=/path/to/project        # Default: current directory
 ```
 
 ### Claude Code Integration
 
-To integrate with Claude Code hooks:
+TemporalBridge integrates automatically with Claude Code via:
 
-1. **Copy hook to Claude directory:**
-   ```bash
-   cp src/hooks/store_conversation.ts /home/uptown/.claude/hooks/
+1. **MCP Server Integration** - Add to your `.mcp.json`:
+   ```json
+   {
+     "temporal-bridge": {
+       "command": "node",
+       "args": ["/home/uptown/Projects/zabaca/temporal-bridge/apps/temporal-bridge-cli/dist/mcp.js"]
+     }
+   }
    ```
 
-2. **Or create symlink:**
-   ```bash
-   ln -sf $(pwd)/src/hooks/store_conversation.ts /home/uptown/.claude/hooks/store_conversation.ts
-   ```
+2. **Automatic Hook Processing** - Conversations are stored automatically via session hooks
 
 ## 📚 Documentation
 
@@ -127,36 +128,44 @@ To integrate with Claude Code hooks:
 - **Project Memory**: Track technical decisions and implementation details
 - **Learning Acceleration**: Build upon past problem-solving approaches
 
-## 🔍 Example Searches
+## 🔍 Example MCP Tool Usage
 
-```bash
-# Find technical relationships
-deno task search --query "graph.add API" --scope edges
+In Claude Code, once MCP is configured, you can use these tools:
 
-# Get entity summaries
-deno task search --query "store_conversation.ts" --scope nodes
+```typescript
+// Search your personal knowledge
+search_personal("typescript functions", 5)
 
-# Search conversation history
-deno task search --query "debugging approaches" --scope episodes
+// Search team/project knowledge  
+search_project("architecture decisions")
 
-# Thread-specific context
-deno task search --thread "claude-code-f381f5fb-b0dd-4e66-8e82-5764e505579c"
+// Combined search across personal and project
+search_all("debugging approaches", 10)
+
+// Get recent conversation context
+get_recent_episodes(5)
+
+// Get current project information
+get_current_context()
 ```
 
 ## 🛠️ Development
 
 ```bash
 # Type checking
-deno task check
+pnpm run typecheck
 
 # Code formatting
-deno task fmt
+pnpm run format
 
 # Linting
-deno task lint
+pnpm run lint
 
-# Run search CLI directly
-deno run --allow-env --allow-net src/retrieve_memory.ts --help
+# Run tests
+pnpm run test
+
+# Run CLI directly
+pnpm run cli --help
 ```
 
 ## 🤝 Contributing

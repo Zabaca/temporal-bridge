@@ -5,8 +5,31 @@ TemporalBridge is an AI memory system that creates searchable, temporal knowledg
 
 **Location**: `~/Projects/zabaca/temporal-bridge/`  
 **Purpose**: AI memory management and search for Claude Code sessions  
-**Tech Stack**: Deno, TypeScript, Zep Cloud API  
+**Tech Stack**: Node.js, PNPM, TypeScript, Zep Cloud API  
 **Architecture**: User Graph with Project Group sharing
+
+## Package Management
+
+**IMPORTANT**: This project uses **PNPM** (not npm) for package management.
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run commands
+pnpm run build
+pnpm run dev:cli
+pnpm run dev:mcp
+
+# Workspace commands
+pnpm --filter temporal-bridge-cli build
+pnpm --filter temporal-bridge-cli dev
+```
+
+**Workspace Structure:**
+- `apps/temporal-bridge-cli/` - Main CLI application
+- Root workspace manages shared dependencies and scripts
+- All core functionality consolidated into CLI package (no separate libs)
 
 ## User Graph Architecture
 
@@ -25,29 +48,39 @@ TemporalBridge is an AI memory system that creates searchable, temporal knowledg
 
 ## Core Components
 
-### Storage & Hooks
-- `src/hooks/store_conversation.ts` - Stores all conversations in user graph
-- `src/lib/project-detector.ts` - Detects project context for metadata
-- `src/lib/zep-client.ts` - Simplified user ID management
+### Core Architecture (Consolidated)
+- `apps/temporal-bridge-cli/src/lib/` - All core functionality consolidated here
+- `apps/temporal-bridge-cli/src/lib/memory-tools.ts` - Personal and project search functions
+- `apps/temporal-bridge-cli/src/lib/project-detector.ts` - Detects project context for metadata
+- `apps/temporal-bridge-cli/src/lib/zep-client.ts` - Simplified user ID management
+- `apps/temporal-bridge-cli/src/lib/project-entities.ts` - Project entity management
+- `apps/temporal-bridge-cli/src/lib/session-manager.ts` - Session and caching
 
-### Memory Tools
-- `src/lib/memory-tools.ts` - Personal and project search functions
-- `src/mcp-server.ts` - MCP tools for direct Claude integration
-- `src/retrieve_memory.ts` - CLI search interface
+### CLI Commands & MCP Server
+- `apps/temporal-bridge-cli/src/commands/` - All CLI commands (search, store-conversation, share-knowledge)
+- `apps/temporal-bridge-cli/src/mcp/` - MCP server with @rekog/mcp-nest integration
+- `apps/temporal-bridge-cli/src/main.ts` - CLI entrypoint
+- `apps/temporal-bridge-cli/src/mcp.ts` - MCP server entrypoint
 
 ### Available Commands
 ```bash
 # Navigate to project
 cd ~/Projects/zabaca/temporal-bridge
 
-# Search personal memories
-deno task search --query "debugging approaches" --scope episodes
+# CLI Development
+pnpm run dev:cli      # Run CLI in development mode
+pnpm run build        # Build all packages
+pnpm run cli          # Run built CLI
 
-# Development
-deno task check    # Type checking
-deno task fmt      # Format code  
-deno task lint     # Lint code
-deno task test     # Run unit tests
+# MCP Server (NEW)
+pnpm run dev:mcp      # Run MCP server in development mode
+pnpm run start:mcp    # Run built MCP server
+
+# Development Tools
+pnpm run typecheck    # Type checking
+pnpm run lint         # Biome linting
+pnpm run format       # Code formatting
+pnpm run test         # Run tests
 ```
 
 ## Project Entities (NEW)
@@ -55,7 +88,7 @@ deno task test     # Run unit tests
 TemporalBridge now creates intelligent **Project Entities** that automatically track your development portfolio with semantic relationships and technology expertise.
 
 ### Automatic Project Intelligence
-- **🔍 Technology Detection**: Automatically detects technologies from package.json, deno.json, file extensions, and project structure
+- **🔍 Technology Detection**: Automatically detects technologies from package.json, file extensions, and project structure
 - **📊 Confidence Scoring**: Each detected technology has confidence scores based on usage patterns
 - **🔗 Semantic Relationships**: Creates knowledge graph relationships: `developer WORKS_ON project`, `project USES technology`, `project BELONGS_TO organization`
 - **📈 Portfolio Analytics**: Tracks your expertise across all projects over time
@@ -81,7 +114,6 @@ interface ProjectEntity {
 
 ### Technology Detection Sources
 1. **Package Dependencies**: package.json dependencies, devDependencies, peerDependencies
-2. **Deno Configuration**: deno.json imports and compiler options  
 3. **File Extensions**: .ts, .tsx, .js, .jsx, .py, .go, .rs, .vue, etc.
 4. **Framework Files**: next.config.js, vue.config.js, angular.json, etc.
 5. **Database Files**: schema.sql, migrations/, prisma/, etc.
@@ -217,10 +249,27 @@ PROJECT_DIR=/path/to/project        # Default: current directory
 
 ## Development Guidelines
 
+### Coding Standards
+**📚 [Full Coding Standards Document](docs/coding-standards.md)**
+
+**Core Rule**: **Never use `any` type** - Use proper TypeScript types, interfaces, generics, or `unknown` instead.
+
+Examples:
+```typescript
+// ❌ Bad
+const data: any = await api.fetch();
+catch (error: any) { ... }
+
+// ✅ Good  
+interface ApiResponse { id: string; name: string; }
+const data: ApiResponse = await api.fetch();
+catch (error: Error | unknown) { ... }
+```
+
 ### When Working on TemporalBridge
 1. **Run from project directory**: `cd ~/Projects/zabaca/temporal-bridge`
-2. **Test changes**: `deno task check` for source code type checking
-3. **Run unit tests**: `deno task test` - comprehensive business logic testing
+2. **ALWAYS use lint:fix**: `pnpm run lint:fix` or `npx biome check --write` - automatically fixes linting issues instead of just checking
+3. **Lint code**: `npx biome check` - enforces zero `any` usage  
 4. **Verify MCP tools**: Test new project management tools after changes
 5. **Check hook storage**: Verify conversations stored in user graph with project entities
 
@@ -234,23 +283,14 @@ PROJECT_DIR=/path/to/project        # Default: current directory
 
 ### Unit Testing Framework
 - **Location**: `tests/` directory with business logic focused tests  
-- **Framework**: Deno native testing with comprehensive assertion library
 - **Philosophy**: Test business logic, not implementation details
 - **Coverage**: 14 test suites with 50+ test steps covering all core functionality
 
 ### Available Test Commands
 ```bash
-# Run all unit tests (TypeScript checking disabled for tests)
-deno task test
-
-# Run tests in watch mode during development  
-deno task test:watch
-
-# Run tests with coverage reporting
-deno task test:coverage
-
-# Type check source code only (excludes tests)
-deno task check
+pnpm test           # Run all tests
+pnpm test:watch     # Run tests in watch mode  
+pnpm test:coverage  # Run tests with coverage report
 ```
 
 ### Test Categories

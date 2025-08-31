@@ -1,0 +1,113 @@
+sessionId: 1d9e40d4-4201-4606-9029-21007306a7bf
+lastUpdated: 2025-08-31T05:30:44.747Z
+projectEntityCache:
+  lastProcessed: 2025-08-30T19:06:26.441Z
+  success: true
+  technologiesDetected: 2
+  projectEntity:
+    projectId: zabaca-temporal-bridge
+    projectName: temporal-bridge
+    displayName: temporal-bridge
+    organization: zabaca
+    projectPath: /home/uptown/Projects/zabaca/temporal-bridge
+    projectType: git
+  technologies:
+    - name: Deno
+      confidence: 0.95
+      source: deno.json
+      context: "Configuration: deno.json"
+    - name: TypeScript
+      confidence: 0.95
+      source: deno.json
+      context: Compiler options present; 18 .ts files (50.0%)
+  relationships:
+    - subject: developer
+      predicate: WORKS_ON
+      object: zabaca-temporal-bridge
+      confidence: 1
+      context: Project developer relationship
+    - subject: zabaca-temporal-bridge
+      predicate: USES
+      object: Deno
+      confidence: 0.95
+      context: "Configuration: deno.json"
+    - subject: zabaca-temporal-bridge
+      predicate: USES
+      object: TypeScript
+      confidence: 0.95
+      context: Compiler options present; 18 .ts files (50.0%)
+    - subject: zabaca-temporal-bridge
+      predicate: BELONGS_TO
+      object: zabaca
+      confidence: 0.95
+      context: Organization ownership
+  rawResponses:
+    entityCreation:
+      success: true
+      projectEntity:
+        type: Project
+        name: zabaca-temporal-bridge
+        properties:
+          displayName: temporal-bridge
+          organization: zabaca
+          projectType: git
+          technologies:
+            - Deno
+            - TypeScript
+          path: /home/uptown/Projects/zabaca/temporal-bridge
+          created: 2025-08-30T19:06:25.797Z
+          lastUpdated: 2025-08-30T19:06:25.797Z
+          confidence:
+            Deno: 0.95
+            TypeScript: 0.95
+          metadata:
+            groupId: project-zabaca-temporal-bridge
+            detectionSources:
+              - deno.json
+              - deno.json
+            overallConfidence: 0.95
+            detectedAt: 2025-08-30T19:06:25.797Z
+      relationships:
+        - subject: developer
+          predicate: WORKS_ON
+          object: zabaca-temporal-bridge
+          confidence: 1
+          context: Project developer relationship
+        - subject: zabaca-temporal-bridge
+          predicate: USES
+          object: Deno
+          confidence: 0.95
+          context: "Configuration: deno.json"
+        - subject: zabaca-temporal-bridge
+          predicate: USES
+          object: TypeScript
+          confidence: 0.95
+          context: Compiler options present; 18 .ts files (50.0%)
+        - subject: zabaca-temporal-bridge
+          predicate: BELONGS_TO
+          object: zabaca
+          confidence: 0.95
+          context: Organization ownership
+      technologiesDetected: 2
+      detectedTechnologies:
+        - name: Deno
+          confidence: 0.95
+          source: deno.json
+          context: "Configuration: deno.json"
+        - name: TypeScript
+          confidence: 0.95
+          source: deno.json
+          context: Compiler options present; 18 .ts files (50.0%)
+      message: Project entity created successfully with 4 relationships
+    relationshipCreation:
+      success: true
+      message: Session 6c38816f-0596-4203-93e2-6d97ec386bbd linked to project
+        zabaca-temporal-bridge
+  performance:
+    detectionTimeMs: 841
+    creationTimeMs: 80
+    totalTimeMs: 921
+  errors: []
+metadata:
+  source: claude-code-hook
+  projectId: zabaca-temporal-bridge

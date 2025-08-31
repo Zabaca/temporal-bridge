@@ -1,0 +1,48 @@
+{
+  "name": "temporal-bridge-cli",
+  "version": "1.0.0",
+  "description": "CLI interface for TemporalBridge AI memory system",
+  "main": "./dist/main.js",
+  "bin": {
+    "temporal-bridge": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "nest build",
+    "dev": "tsx src/main.ts",
+    "dev:mcp": "tsx src/mcp.ts",
+    "start": "node dist/main.js",
+    "start:mcp": "node dist/mcp.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --testNamePattern='.*\\.it\\.test\\.ts'",
+    "test:unit": "vitest run --testNamePattern='.*\\.test\\.ts' --exclude='**/*.it.test.ts' --exclude='**/*.e2e.it.test.ts'",
+    "test:e2e": "vitest run --testNamePattern='.*\\.e2e\\.it\\.test\\.ts'",
+    "test:all": "pnpm test"
+  },
+  "dependencies": {
+    "@getzep/zep-cloud": "^3.2.0",
+    "@nestjs/common": "^10.4.4",
+    "@nestjs/core": "^10.4.4",
+    "@rekog/mcp-nest": "^1.8.2",
+    "nest-commander": "^3.13.0",
+    "reflect-metadata": "^0.2.2",
+    "yaml": "^2.6.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
+    "@nestjs/testing": "^10.4.4",
+    "@types/node": "^22.7.7",
+    "@vitest/ui": "^2.1.2",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "unplugin-swc": "^1.5.7",
+    "vitest": "^2.1.2",
+    "vitest-mock-extended": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

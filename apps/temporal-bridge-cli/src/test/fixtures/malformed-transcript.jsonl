@@ -1,0 +1,3 @@
+{"type": "user", "message": {"content": "Valid message"}, "uuid": "msg-1", "timestamp": "2024-01-01T10:00:00Z"}
+not-valid-json-line
+{"type": "assistant", "message": {"content": [{"type": "text", "text": "Response"}]}, "uuid": "msg-2", "parentUuid": "msg-1", "timestamp": "2024-01-01T10:01:00Z"}
