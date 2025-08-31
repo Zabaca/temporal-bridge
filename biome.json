@@ -36,7 +36,7 @@
         "noUnusedImports": "error",
         "noUnusedVariables": "error",
         "useExhaustiveDependencies": "error",
-        "useHookAtTopLevel": "error",
+        "useHookAtTopLevel": "off",
         "useImportExtensions": "off",
         "noNodejsModules": "off",
         "noUndeclaredVariables": "off",

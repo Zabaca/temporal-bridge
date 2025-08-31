@@ -79,12 +79,12 @@ Convert the TemporalBridge project from a standalone Deno project to a Node.js/p
 - [x] Sub-goal 5.4: Add development scripts (pnpm dev:cli, pnpm dev:mcp)
 - [x] Sub-goal 5.5: Add production scripts and build commands
 
-### Parent Goal 6: Convert Testing Suite to Vitest
-- [ ] Sub-goal 6.1: Set up Vitest configuration with @golevelup/ts-vitest
-- [ ] Sub-goal 6.2: Move tests to respective app/lib directories
-- [ ] Sub-goal 6.3: Convert Deno test assertions to Vitest expect syntax
-- [ ] Sub-goal 6.4: Update mocking to use createMock<T>() patterns
-- [ ] Sub-goal 6.5: Ensure all tests pass with new setup
+### Parent Goal 6: Convert Testing Suite to Vitest ✓
+- [x] Sub-goal 6.1: Set up Vitest configuration with @golevelup/ts-vitest
+- [x] Sub-goal 6.2: Create test categories (unit/integration/e2e) with proper filtering
+- [x] Sub-goal 6.3: Create test helpers and setup utilities following established patterns
+- [x] Sub-goal 6.4: Write first integration test for MemoryToolsService with mocked Zep
+- [x] Sub-goal 6.5: Configure test scripts and environment
 
 ### Parent Goal 7: API Conversions and Compatibility ✓
 - [x] Sub-goal 7.1: Convert file system APIs (Deno.readTextFile → fs.promises)

@@ -5,7 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { detectProject } from './project-detector';
-import { ensureProjectEntity, listProjectEntities } from './project-entities';
+import { ProjectEntitiesService } from './project-entities';
 import type { UnifiedMemoryQuery, UnifiedMemoryResult } from './types';
 import { type Reranker, ZepError, ZepService } from './zep-client';
 
@@ -43,7 +43,10 @@ export interface ThreadContextResult {
  */
 @Injectable()
 export class MemoryToolsService {
-  constructor(private readonly zepService: ZepService) {}
+  constructor(
+    private readonly zepService: ZepService,
+    private readonly projectEntitiesService: ProjectEntitiesService,
+  ) {}
 
   /**
    * Share knowledge to project group graph
@@ -283,7 +286,7 @@ export class MemoryToolsService {
       // Handle debug commands
       if (options.debugListProjects) {
         console.log('🔍 DEBUG: Testing listProjectEntities() API call\n');
-        const result = await listProjectEntities();
+        const result = await this.projectEntitiesService.listProjectEntities();
         console.log('Raw API Response:', JSON.stringify(result, null, 2));
         return [];
       }
@@ -299,7 +302,7 @@ export class MemoryToolsService {
         const projectPath = process.cwd();
         console.log(`Creating entity for project path: ${projectPath}`);
 
-        const result = await ensureProjectEntity(projectPath, {
+        const result = await this.projectEntitiesService.ensureProjectEntity(projectPath, {
           forceUpdate: true,
           skipTechDetection: false,
         });

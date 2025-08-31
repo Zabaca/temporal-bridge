@@ -550,27 +550,3 @@ export class ProjectEntitiesService {
     }
   }
 }
-
-// Export standalone functions for backward compatibility
-const projectEntitiesServiceInstance = new ProjectEntitiesService(new ZepService());
-
-export async function listProjectEntities(): Promise<{
-  success: boolean;
-  projects?: unknown[];
-  entities?: ProjectEntity[];
-  count?: number;
-  error?: string;
-}> {
-  const result = await projectEntitiesServiceInstance.listProjectEntities();
-  return {
-    ...result,
-    entities: result.projects as ProjectEntity[],
-  };
-}
-
-export function ensureProjectEntity(
-  projectPath: string,
-  options: EntityCreationOptions = {},
-): Promise<EntityCreationResult> {
-  return projectEntitiesServiceInstance.ensureProjectEntity(projectPath, options);
-}
