@@ -38,7 +38,7 @@ export * from './types';
 export * from './zep-client';
 // Main exports for common use cases
 export {
-  type Reranker,
+  Zep,
   ZepError,
   // Zep service
   ZepService,

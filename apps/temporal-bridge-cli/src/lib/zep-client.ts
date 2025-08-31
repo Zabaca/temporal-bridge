@@ -8,7 +8,7 @@ import { Injectable } from '@nestjs/common';
 export { ZepError };
 
 // Re-export common Zep types
-export type Reranker = 'rrf' | 'mmr' | 'node_distance' | 'episode_mentions' | 'cross_encoder' | 'none';
+export { Zep } from '@getzep/zep-cloud';
 
 interface ApiError extends Error {
   statusCode?: number;

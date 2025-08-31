@@ -3,38 +3,33 @@
  * Structured functions for memory search and retrieval via MCP
  */
 
-import type { Zep } from '@getzep/zep-cloud';
+import { Zep } from '@getzep/zep-cloud';
 import { Injectable } from '@nestjs/common';
 import { detectProject } from './project-detector';
 import { ProjectEntitiesService } from './project-entities';
 import type { UnifiedMemoryQuery, UnifiedMemoryResult } from './types';
-import { type Reranker, ZepError, ZepService } from './zep-client';
+import { ZepError, ZepService } from './zep-client';
 
-export interface FactResult {
-  fact: string;
-  score: number;
-  created_at: string;
-  valid_at?: string;
-  expired_at?: string;
-  source_episodes: string[];
-}
-
+// Unified interface that works with SDK types but provides consistent interface
 export interface MemorySearchResult {
-  content: string;
+  content: string; // Unified field - maps to 'fact' for edges, 'summary' for nodes, 'content' for episodes
   score: number;
   type: 'edge' | 'node' | 'episode';
-  created_at?: string;
+  created_at?: string; // Normalized from SDK's 'createdAt'
   metadata: {
     scope: string;
     uuid?: string;
     processed?: boolean;
     [key: string]: unknown;
   };
+  // Include original SDK properties for direct access when needed
+  _original?: Zep.EntityEdge | Zep.EntityNode | Zep.Episode;
 }
 
+// Keep ThreadContextResult but simplify facts type
 export interface ThreadContextResult {
   context_summary: string;
-  facts: FactResult[];
+  facts: MemorySearchResult[]; // Use our unified interface
   thread_id: string;
   user_id: string;
 }
@@ -108,9 +103,9 @@ export class MemoryToolsService {
   async searchProjectGroup(
     query: string,
     projectName?: string,
-    scope: 'edges' | 'nodes' | 'episodes' = 'episodes',
+    scope: Zep.GraphSearchScope = Zep.GraphSearchScope.Episodes,
     limit = 10,
-    reranker: Reranker = 'cross_encoder',
+    reranker: Zep.Reranker | 'none' = Zep.Reranker.CrossEncoder,
   ): Promise<MemorySearchResult[]> {
     try {
       if (!query || typeof query !== 'string' || query.trim().length === 0) {
@@ -205,12 +200,12 @@ export class MemoryToolsService {
   /**
    * Search for facts and relationships (edges in knowledge graph)
    */
-  async searchFacts(query: string, limit = 5, minRating?: number, reranker?: Reranker): Promise<FactResult[]> {
+  async searchFacts(query: string, limit = 5, minRating?: number, reranker?: Zep.Reranker | 'none'): Promise<MemorySearchResult[]> {
     try {
       const searchResults = await this.zepService.graph.search({
         userId: this.zepService.userId,
         query,
-        scope: 'edges',
+        scope: Zep.GraphSearchScope.Edges,
         limit,
         reranker: reranker === 'none' ? undefined : reranker,
       });
@@ -222,12 +217,18 @@ export class MemoryToolsService {
       return searchResults.edges
         .filter((edge) => !minRating || (edge.score ?? 0) >= minRating)
         .map((edge) => ({
-          fact: edge.fact || 'Unknown fact',
+          content: edge.fact || 'Unknown fact',
           score: edge.score ?? 0,
+          type: 'edge' as const,
           created_at: edge.createdAt,
-          valid_at: edge.validAt,
-          expired_at: edge.expiredAt,
-          source_episodes: edge.episodes || [],
+          metadata: {
+            scope: 'edges',
+            uuid: edge.uuid,
+            valid_at: edge.validAt,
+            expired_at: edge.expiredAt,
+            source_episodes: edge.episodes || [],
+          },
+          _original: edge as Zep.EntityEdge,
         }));
     } catch (error) {
       console.error('Search facts error:', error);
@@ -240,9 +241,9 @@ export class MemoryToolsService {
    */
   async searchMemory(
     query: string,
-    scope: 'edges' | 'nodes' | 'episodes' = 'episodes',
+    scope: Zep.GraphSearchScope = Zep.GraphSearchScope.Episodes,
     limit = 5,
-    reranker?: Reranker,
+    reranker?: Zep.Reranker | 'none',
     projectFilter?: string,
   ): Promise<MemorySearchResult[]> {
     try {
@@ -256,9 +257,9 @@ export class MemoryToolsService {
 
   private async performMemorySearch(
     query: string,
-    scope: string,
+    scope: Zep.GraphSearchScope,
     limit: number,
-    reranker?: Reranker,
+    reranker?: Zep.Reranker | 'none',
     projectFilter?: string,
     graphId?: string,
   ) {
@@ -266,7 +267,7 @@ export class MemoryToolsService {
 
     const searchParams: Zep.GraphSearchQuery = {
       query: enhancedQuery,
-      scope: scope as 'edges' | 'nodes' | 'episodes',
+      scope,
       limit,
       reranker: reranker === 'none' ? undefined : reranker,
     };
@@ -328,6 +329,7 @@ export class MemoryToolsService {
             target_node: edge.targetNodeUuid,
             episodes: edge.episodes,
           },
+          _original: edge as Zep.EntityEdge,
         });
       }
     }
@@ -362,6 +364,7 @@ export class MemoryToolsService {
             labels: node.labels,
             attributes: node.attributes,
           },
+          _original: node as Zep.EntityNode,
         });
       }
     }
@@ -400,6 +403,7 @@ export class MemoryToolsService {
             session_id: episode.sessionId,
             thread_id: episode.threadId,
           },
+          _original: episode as Zep.Episode,
         });
       }
     }
@@ -442,9 +446,12 @@ export class MemoryToolsService {
 
       // Handle query-based search using the existing searchMemory method
       if (options.query) {
+        const searchScope = options.searchScope === 'edges' ? Zep.GraphSearchScope.Edges :
+                           options.searchScope === 'nodes' ? Zep.GraphSearchScope.Nodes :
+                           Zep.GraphSearchScope.Episodes;
         const searchResults = await this.searchMemory(
           options.query,
-          options.searchScope || 'episodes',
+          searchScope,
           options.limit || 10,
           options.reranker,
         );

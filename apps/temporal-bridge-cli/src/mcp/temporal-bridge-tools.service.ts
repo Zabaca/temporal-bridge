@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
-import { MemoryToolsService, ProjectEntitiesService, ZepService } from '../lib';
+import { MemoryToolsService, ProjectEntitiesService, Zep, ZepService } from '../lib';
 
 @Injectable()
 export class TemporalBridgeToolsService {
@@ -61,7 +61,7 @@ export class TemporalBridgeToolsService {
         input.project,
         'episodes', // Default to episodes for better results
         input.limit || 5,
-        input.reranker || 'cross_encoder',
+        input.reranker === 'none' ? undefined : (input.reranker || Zep.Reranker.CrossEncoder),
       );
 
       return {
