@@ -195,84 +195,153 @@ export class MemoryToolsService {
     projectFilter?: string,
   ): Promise<MemorySearchResult[]> {
     try {
-      // Enhance query with project filter if provided
-      const enhancedQuery = projectFilter ? `${query} ${projectFilter}` : query;
-
-      const searchResults = await this.zepService.graph.search({
-        userId: this.zepService.userId,
-        query: enhancedQuery,
-        scope,
-        limit,
-        reranker: reranker === 'none' ? undefined : reranker,
-      });
-
-      const results: MemorySearchResult[] = [];
-
-      // Process different result types
-      if (scope === 'edges' && searchResults?.edges) {
-        for (const edge of searchResults.edges) {
-          results.push({
-            content: edge.fact || 'Edge relation',
-            score: edge.score ?? 0,
-            type: 'edge',
-            created_at: edge.createdAt,
-            metadata: {
-              scope,
-              uuid: edge.uuid,
-              project_filtered: !!projectFilter,
-              project_filter: projectFilter,
-              valid_at: edge.validAt,
-              expired_at: edge.expiredAt,
-              source_node: edge.sourceNodeUuid,
-              target_node: edge.targetNodeUuid,
-              episodes: edge.episodes,
-            },
-          });
-        }
-      } else if (scope === 'nodes' && searchResults?.nodes) {
-        for (const node of searchResults.nodes) {
-          results.push({
-            content: node.summary || node.name || 'Node',
-            score: node.score ?? 0,
-            type: 'node',
-            created_at: node.createdAt,
-            metadata: {
-              scope,
-              uuid: node.uuid,
-              project_filtered: !!projectFilter,
-              project_filter: projectFilter,
-              name: node.name,
-              labels: node.labels,
-              attributes: node.attributes,
-            },
-          });
-        }
-      } else if (scope === 'episodes' && searchResults?.episodes) {
-        for (const episode of searchResults.episodes) {
-          results.push({
-            content: episode.content || 'Episode content',
-            score: episode.score ?? 0,
-            type: 'episode',
-            created_at: episode.createdAt,
-            metadata: {
-              scope,
-              uuid: episode.uuid,
-              project_filtered: !!projectFilter,
-              project_filter: projectFilter,
-              processed: episode.processed,
-              role_type: episode.roleType,
-              source: episode.source,
-              session_id: episode.sessionId,
-              thread_id: (episode as { threadId?: string }).threadId,
-            },
-          });
-        }
-      }
-
-      return results;
+      const searchResults = await this.performMemorySearch(query, scope, limit, reranker, projectFilter);
+      return this.processSearchResults(searchResults, scope, projectFilter);
     } catch (error) {
       console.error('Search memory error:', error);
       return [];
+    }
+  }
+
+  private async performMemorySearch(
+    query: string,
+    scope: string,
+    limit: number,
+    reranker?: Reranker,
+    projectFilter?: string,
+  ) {
+    const enhancedQuery = projectFilter ? `${query} ${projectFilter}` : query;
+
+    return await this.zepService.graph.search({
+      userId: this.zepService.userId,
+      query: enhancedQuery,
+      scope,
+      limit,
+      reranker: reranker === 'none' ? undefined : reranker,
+    });
+  }
+
+  private processSearchResults(searchResults: unknown, scope: string, projectFilter?: string): MemorySearchResult[] {
+    const results: MemorySearchResult[] = [];
+
+    if (scope === 'edges') {
+      this.processEdgeResults(searchResults, results, projectFilter);
+    } else if (scope === 'nodes') {
+      this.processNodeResults(searchResults, results, projectFilter);
+    } else if (scope === 'episodes') {
+      this.processEpisodeResults(searchResults, results, projectFilter);
+    }
+
+    return results;
+  }
+
+  private processEdgeResults(searchResults: unknown, results: MemorySearchResult[], projectFilter?: string) {
+    const typedResults = searchResults as {
+      edges?: {
+        fact?: string;
+        score?: number;
+        createdAt?: string;
+        uuid?: string;
+        validAt?: string;
+        expiredAt?: string;
+        sourceNodeUuid?: string;
+        targetNodeUuid?: string;
+        episodes?: unknown;
+      }[];
+    };
+
+    if (typedResults?.edges) {
+      for (const edge of typedResults.edges) {
+        results.push({
+          content: edge.fact || 'Edge relation',
+          score: edge.score ?? 0,
+          type: 'edge',
+          created_at: edge.createdAt,
+          metadata: {
+            scope: 'edges',
+            uuid: edge.uuid,
+            project_filtered: !!projectFilter,
+            project_filter: projectFilter,
+            valid_at: edge.validAt,
+            expired_at: edge.expiredAt,
+            source_node: edge.sourceNodeUuid,
+            target_node: edge.targetNodeUuid,
+            episodes: edge.episodes,
+          },
+        });
+      }
+    }
+  }
+
+  private processNodeResults(searchResults: unknown, results: MemorySearchResult[], projectFilter?: string) {
+    const typedResults = searchResults as {
+      nodes?: {
+        summary?: string;
+        name?: string;
+        score?: number;
+        createdAt?: string;
+        uuid?: string;
+        labels?: unknown;
+        attributes?: unknown;
+      }[];
+    };
+
+    if (typedResults?.nodes) {
+      for (const node of typedResults.nodes) {
+        results.push({
+          content: node.summary || node.name || 'Node',
+          score: node.score ?? 0,
+          type: 'node',
+          created_at: node.createdAt,
+          metadata: {
+            scope: 'nodes',
+            uuid: node.uuid,
+            project_filtered: !!projectFilter,
+            project_filter: projectFilter,
+            name: node.name,
+            labels: node.labels,
+            attributes: node.attributes,
+          },
+        });
+      }
+    }
+  }
+
+  private processEpisodeResults(searchResults: unknown, results: MemorySearchResult[], projectFilter?: string) {
+    const typedResults = searchResults as {
+      episodes?: {
+        content?: string;
+        score?: number;
+        createdAt?: string;
+        uuid?: string;
+        processed?: boolean;
+        roleType?: string;
+        source?: string;
+        sessionId?: string;
+        threadId?: string;
+      }[];
+    };
+
+    if (typedResults?.episodes) {
+      for (const episode of typedResults.episodes) {
+        results.push({
+          content: episode.content || 'Episode content',
+          score: episode.score ?? 0,
+          type: 'episode',
+          created_at: episode.createdAt,
+          metadata: {
+            scope: 'episodes',
+            uuid: episode.uuid,
+            project_filtered: !!projectFilter,
+            project_filter: projectFilter,
+            processed: episode.processed,
+            role_type: episode.roleType,
+            source: episode.source,
+            session_id: episode.sessionId,
+            thread_id: episode.threadId,
+          },
+        });
+      }
     }
   }
 

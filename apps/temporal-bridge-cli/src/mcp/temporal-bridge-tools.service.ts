@@ -53,7 +53,7 @@ export class TemporalBridgeToolsService {
         .describe('Reranker type for better accuracy'),
     }),
   })
-  async searchProject(input: { query: string; project?: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
+  searchProject(input: { query: string; project?: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
     // TODO: Implement project-specific search when project groups are set up
     return {
       source: 'project',
@@ -220,25 +220,7 @@ export class TemporalBridgeToolsService {
       };
     }
 
-    const expertise: Record<string, { count: number; projects: string[]; avgConfidence?: number }> = {};
-
-    for (const project of projectsResult.projects) {
-      const projectData = project as any;
-      const technologies = projectData.attributes?.technologies;
-
-      if (typeof technologies === 'string') {
-        const techList = technologies.split(', ');
-        for (const tech of techList) {
-          if (!input.technology || tech === input.technology) {
-            if (!expertise[tech]) {
-              expertise[tech] = { count: 0, projects: [] };
-            }
-            expertise[tech].count++;
-            expertise[tech].projects.push(projectData.name || 'Unknown');
-          }
-        }
-      }
-    }
+    const expertise = this.buildTechnologyExpertise(projectsResult.projects, input.technology);
 
     return {
       success: true,
@@ -246,6 +228,53 @@ export class TemporalBridgeToolsService {
       expertise,
       totalProjects: projectsResult.count,
     };
+  }
+
+  private buildTechnologyExpertise(
+    projects: unknown[],
+    targetTechnology?: string,
+  ): Record<string, { count: number; projects: string[]; avgConfidence?: number }> {
+    const expertise: Record<string, { count: number; projects: string[]; avgConfidence?: number }> = {};
+
+    for (const project of projects) {
+      this.processProjectTechnologies(project, expertise, targetTechnology);
+    }
+
+    return expertise;
+  }
+
+  private processProjectTechnologies(
+    project: unknown,
+    expertise: Record<string, { count: number; projects: string[]; avgConfidence?: number }>,
+    targetTechnology?: string,
+  ) {
+    const projectData = project as { attributes?: { technologies?: string | Record<string, number> }; name?: string };
+    const technologies = projectData.attributes?.technologies;
+
+    if (typeof technologies === 'string') {
+      const techList = technologies.split(', ');
+      for (const tech of techList) {
+        if (this.shouldIncludeTechnology(tech, targetTechnology)) {
+          this.updateTechnologyExpertise(tech, projectData.name || 'Unknown', expertise);
+        }
+      }
+    }
+  }
+
+  private shouldIncludeTechnology(tech: string, targetTechnology?: string): boolean {
+    return !targetTechnology || tech === targetTechnology;
+  }
+
+  private updateTechnologyExpertise(
+    tech: string,
+    projectName: string,
+    expertise: Record<string, { count: number; projects: string[]; avgConfidence?: number }>,
+  ) {
+    if (!expertise[tech]) {
+      expertise[tech] = { count: 0, projects: [] };
+    }
+    expertise[tech].count++;
+    expertise[tech].projects.push(projectName);
   }
 
   @Tool({
@@ -256,7 +285,7 @@ export class TemporalBridgeToolsService {
       min_rating: z.number().optional().describe('Minimum fact confidence rating 0-1'),
     }),
   })
-  async getThreadContext(input: { thread_id: string; min_rating?: number }) {
+  getThreadContext(input: { thread_id: string; min_rating?: number }) {
     // TODO: Implement thread context retrieval when Zep thread API is integrated
     return {
       thread_id: input.thread_id,

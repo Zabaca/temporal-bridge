@@ -82,39 +82,65 @@ export class ProjectEntitiesService {
     projectContext: ProjectContext,
     options: EntityCreationOptions,
   ): Promise<TechnologyDetectionResult | null> {
-    let techDetection: TechnologyDetectionResult | null = null;
-    if (!options.skipTechDetection) {
-      let shouldDetectTech = true;
-      try {
-        const existingResults = await this.zepService.graph.search({
-          userId: this.zepService.userId,
-          query: `Project ${projectContext.projectName}`,
-          scope: 'nodes',
-          limit: 1,
-        });
-
-        if (existingResults?.nodes && existingResults.nodes.length > 0) {
-          const existingNode = existingResults.nodes[0];
-          if (existingNode) {
-            const lastUpdated = existingNode.attributes?.lastUpdated;
-            if (lastUpdated && typeof lastUpdated === 'string') {
-              const lastUpdateTime = new Date(lastUpdated);
-              const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-              shouldDetectTech = lastUpdateTime < oneDayAgo;
-            }
-          }
-        }
-      } catch {
-        shouldDetectTech = true;
-      }
-
-      if (shouldDetectTech || options.forceUpdate) {
-        techDetection = await detectProjectTechnologies(projectContext.projectPath, options.confidenceThreshold || 0.6);
-      } else {
-        console.log('⚡ Skipping technology detection - entity recently updated');
-      }
+    if (options.skipTechDetection) {
+      return null;
     }
-    return techDetection;
+
+    const shouldDetect = await this.shouldPerformTechDetection(projectContext, options);
+
+    if (shouldDetect) {
+      return await detectProjectTechnologies(projectContext.projectPath, options.confidenceThreshold || 0.6);
+    }
+
+    console.log('⚡ Skipping technology detection - entity recently updated');
+    return null;
+  }
+
+  private async shouldPerformTechDetection(
+    projectContext: ProjectContext,
+    options: EntityCreationOptions,
+  ): Promise<boolean> {
+    if (options.forceUpdate) {
+      return true;
+    }
+
+    return await this.isProjectUpdateNeeded(projectContext);
+  }
+
+  private async isProjectUpdateNeeded(projectContext: ProjectContext): Promise<boolean> {
+    try {
+      const existingResults = await this.searchForExistingProject(projectContext);
+
+      if (!existingResults?.nodes?.length) {
+        return true;
+      }
+
+      const existingNode = existingResults.nodes[0];
+      return this.isProjectStale(existingNode);
+    } catch {
+      return true;
+    }
+  }
+
+  private async searchForExistingProject(projectContext: ProjectContext) {
+    return await this.zepService.graph.search({
+      userId: this.zepService.userId,
+      query: `Project ${projectContext.projectName}`,
+      scope: 'nodes',
+      limit: 1,
+    });
+  }
+
+  private isProjectStale(existingNode: { attributes?: { lastUpdated?: unknown } }): boolean {
+    const lastUpdated = existingNode.attributes?.lastUpdated;
+
+    if (!lastUpdated || typeof lastUpdated !== 'string') {
+      return true;
+    }
+
+    const lastUpdateTime = new Date(lastUpdated);
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return lastUpdateTime < oneDayAgo;
   }
 
   private createEntityProperties(

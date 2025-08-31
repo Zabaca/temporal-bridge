@@ -29,7 +29,7 @@ export interface ProjectContext {
 /**
  * Find git root directory by walking up the filesystem
  */
-async function findGitRoot(startPath: string): Promise<string | null> {
+function findGitRoot(startPath: string): string | null {
   let currentPath = resolve(startPath);
 
   while (currentPath !== dirname(currentPath)) {
@@ -138,12 +138,12 @@ async function getGitRemoteInfo(
 /**
  * Validate git repository and get additional info
  */
-async function validateGitRepo(gitRoot: string): Promise<{ isValid: boolean; hasCommits: boolean }> {
+async function _validateGitRepo(gitRoot: string): Promise<{ isValid: boolean; hasCommits: boolean }> {
   try {
     const commitCount = await executeGitCommand(['rev-list', '--count', 'HEAD'], gitRoot);
 
     if (commitCount !== null) {
-      const count = Number.parseInt(commitCount);
+      const count = Number.parseInt(commitCount, 10);
       return { isValid: true, hasCommits: count > 0 };
     }
   } catch (_error) {
@@ -177,7 +177,9 @@ async function parseProjectConfig(projectPath: string): Promise<{ name?: string;
             };
           }
         }
-      } catch (_error) {}
+      } catch (_error) {
+        // Silently continue with basic detection if file reading fails
+      }
     }
   }
 
@@ -201,7 +203,7 @@ function parsePathStructure(projectPath: string): { organization?: string; name:
   }
 
   // Look for src/github.com/org/repo pattern (Go-style)
-  const githubIndex = parts.findIndex((part) => part === 'github.com');
+  const githubIndex = parts.indexOf('github.com');
   if (githubIndex >= 0 && parts.length > githubIndex + 2) {
     return {
       organization: parts[githubIndex + 1],
@@ -245,7 +247,7 @@ export async function detectProject(workingDir: string = process.cwd()): Promise
   const resolvedPath = resolve(workingDir);
 
   // Try git-based detection first - this is now the primary method
-  const gitRoot = await findGitRoot(resolvedPath);
+  const gitRoot = findGitRoot(resolvedPath);
 
   if (gitRoot) {
     const gitRemoteInfo = await getGitRemoteInfo(gitRoot);
@@ -416,7 +418,7 @@ async function detectPackageJsonTechnologies(projectPath: string): Promise<Techn
 /**
  * Parse deno config and extract basic technologies
  */
-function parseDenoBasicTechnologies(config: any, configFile: string): TechnologyDetection[] {
+function parseDenoBasicTechnologies(config: Record<string, unknown>, configFile: string): TechnologyDetection[] {
   const technologies: TechnologyDetection[] = [];
 
   // Deno itself is present
@@ -443,7 +445,7 @@ function parseDenoBasicTechnologies(config: any, configFile: string): Technology
 /**
  * Extract technologies from deno imports configuration
  */
-function parseDenoImportTechnologies(imports: Record<string, any>): TechnologyDetection[] {
+function parseDenoImportTechnologies(imports: Record<string, unknown>): TechnologyDetection[] {
   const technologies: TechnologyDetection[] = [];
 
   const importMap: Record<string, { name: string; confidence: number }> = {
@@ -506,6 +508,64 @@ async function detectDenoTechnologies(projectPath: string): Promise<TechnologyDe
 }
 
 /**
+ * Walk through project directory and count file extensions
+ */
+async function walkProjectDirectory(projectPath: string, extensionCounts: Record<string, number>): Promise<void> {
+  const walkDir = async (dir: string, depth = 0): Promise<void> => {
+    if (depth > 3) {
+      return; // Limit recursion depth
+    }
+
+    const entries = await readdir(dir, { withFileTypes: true });
+    await processDirectoryEntries(entries, dir, depth, walkDir, extensionCounts);
+  };
+
+  await walkDir(projectPath);
+}
+
+/**
+ * Process directory entries and handle files/subdirectories
+ */
+async function processDirectoryEntries(
+  entries: Dirent[],
+  dir: string,
+  depth: number,
+  walkDir: (dir: string, depth: number) => Promise<void>,
+  extensionCounts: Record<string, number>,
+): Promise<void> {
+  for (const entry of entries) {
+    if (shouldSkipEntry(entry.name)) {
+      continue;
+    }
+
+    const fullPath = resolve(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      await walkDir(fullPath, depth + 1);
+    } else if (entry.isFile()) {
+      processFileExtension(entry.name, extensionCounts);
+    }
+  }
+}
+
+/**
+ * Check if directory entry should be skipped
+ */
+function shouldSkipEntry(name: string): boolean {
+  return name.startsWith('.') || name === 'node_modules';
+}
+
+/**
+ * Process file extension and update counts
+ */
+function processFileExtension(fileName: string, extensionCounts: Record<string, number>): void {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (ext) {
+    extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
+  }
+}
+
+/**
  * Analyze file extensions to detect technologies
  */
 async function detectFileExtensionTechnologies(projectPath: string): Promise<TechnologyDetection[]> {
@@ -513,32 +573,7 @@ async function detectFileExtensionTechnologies(projectPath: string): Promise<Tec
   const extensionCounts: Record<string, number> = {};
 
   try {
-    // Walk through project directory
-    const walkDir = async (dir: string, depth = 0): Promise<void> => {
-      if (depth > 3) {
-        return; // Limit recursion depth
-      }
-
-      const entries = await readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === 'node_modules') {
-          continue;
-        }
-
-        const fullPath = resolve(dir, entry.name);
-
-        if (entry.isDirectory()) {
-          await walkDir(fullPath, depth + 1);
-        } else if (entry.isFile()) {
-          const ext = entry.name.split('.').pop()?.toLowerCase();
-          if (ext) {
-            extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
-          }
-        }
-      }
-    };
-
-    await walkDir(projectPath);
+    await walkProjectDirectory(projectPath, extensionCounts);
 
     // Technology mapping based on file extensions
     const extMap: Record<string, { name: string; baseConfidence: number }> = {
