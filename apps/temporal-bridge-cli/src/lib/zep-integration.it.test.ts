@@ -272,12 +272,9 @@ describe('Zep API Integration Test', () => {
         ],
       });
 
-      expect(mockZepService.thread.addMessages).toHaveBeenCalledWith(
-        'claude-code-session-abc123',
-        {
-          messages: expect.any(Array),
-        }
-      );
+      expect(mockZepService.thread.addMessages).toHaveBeenCalledWith('claude-code-session-abc123', {
+        messages: expect.any(Array),
+      });
     });
   });
 

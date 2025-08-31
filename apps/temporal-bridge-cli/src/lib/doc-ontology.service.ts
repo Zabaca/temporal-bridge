@@ -66,10 +66,7 @@ export class DocumentationOntologyService {
 
       // Set the ontology using Zep's setOntology method
       // For now, set without graph targeting until we understand the API better
-      await this.zepService.graph.setOntology(
-        DocumentationEntityTypes,
-        DocumentationEdgeTypes
-      );
+      await this.zepService.graph.setOntology(DocumentationEntityTypes, DocumentationEdgeTypes);
 
       const successMessage = graphId
         ? `Documentation ontology set on graph: ${graphId}`
@@ -203,7 +200,10 @@ export class DocumentationOntologyService {
     limits: typeof ONTOLOGY_LIMITS;
   } {
     const entityTypes: Record<string, { description: string; fieldCount: number }> = {};
-    const edgeTypes: Record<string, { description: string; sourceTargets: Array<{ source?: string; target?: string }> }> = {};
+    const edgeTypes: Record<
+      string,
+      { description: string; sourceTargets: Array<{ source?: string; target?: string }> }
+    > = {};
 
     // Process entity types
     for (const [name, schema] of Object.entries(DocumentationEntityTypes)) {
@@ -239,10 +239,7 @@ export class DocumentationOntologyService {
       await this.zepService.ensureUser();
 
       // Set empty ontology to remove all custom types
-      await this.zepService.graph.setOntology(
-        {},
-        {}
-      );
+      await this.zepService.graph.setOntology({}, {});
 
       const message = graphId ? `Ontology reset on graph: ${graphId}` : 'Ontology reset project-wide';
 

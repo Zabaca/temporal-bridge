@@ -61,20 +61,22 @@ export class TemporalBridgeToolsService {
         input.project,
         'episodes', // Default to episodes for better results
         input.limit || 5,
-        input.reranker === 'none' ? undefined : (input.reranker || Zep.Reranker.CrossEncoder),
+        input.reranker === 'none' ? undefined : input.reranker || Zep.Reranker.CrossEncoder,
       );
 
       return {
         source: 'project',
         query: input.query,
         project: input.project || 'current',
-        results: results ? results.map((r) => ({
-          content: r.content,
-          score: r.score,
-          timestamp: r.created_at,
-          type: r.type,
-          metadata: r.metadata,
-        })) : [],
+        results: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              type: r.type,
+              metadata: r.metadata,
+            }))
+          : [],
       };
     } catch (error) {
       console.error('❌ Error searching project:', error);
@@ -318,7 +320,7 @@ export class TemporalBridgeToolsService {
       // Get Zep's intelligent context block for this thread
       // Use mode: "basic" to get structured FACTS and ENTITIES format
       const threadContext = await this.zepService.thread.getUserContext(input.thread_id, {
-        mode: 'basic' // Get structured FACTS/ENTITIES format, not summary
+        mode: 'basic', // Get structured FACTS/ENTITIES format, not summary
       });
 
       // The context block contains structured FACTS and ENTITIES
@@ -351,7 +353,7 @@ export class TemporalBridgeToolsService {
     try {
       await this.zepService.ensureUser();
       const entityTypes = await this.zepService.graph.listEntityTypes();
-      
+
       return {
         entity_types: entityTypes,
         timestamp: new Date().toISOString(),

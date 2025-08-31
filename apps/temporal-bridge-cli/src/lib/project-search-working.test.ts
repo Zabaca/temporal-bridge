@@ -6,9 +6,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 import { MemoryToolsService } from './memory-tools';
+import * as projectDetector from './project-detector';
 import { ProjectEntitiesService } from './project-entities';
 import { ZepService } from './zep-client';
-import * as projectDetector from './project-detector';
 
 describe('Project Search Fix Verification', () => {
   let memoryToolsService: MemoryToolsService;
@@ -22,11 +22,11 @@ describe('Project Search Fix Verification', () => {
       value: 'test-developer',
       writable: true,
       enumerable: true,
-      configurable: true
+      configurable: true,
     });
-    
+
     mockProjectEntitiesService = mockDeep<ProjectEntitiesService>();
-    
+
     // Mock project detection
     vi.spyOn(projectDetector, 'detectProject').mockResolvedValue({
       projectId: 'zabaca-temporal-bridge',
@@ -58,10 +58,7 @@ describe('Project Search Fix Verification', () => {
       mockZepService.graph.search.mockResolvedValue(mockProjectSearchResults);
 
       // Call searchProjectGroup method
-      const results = await memoryToolsService.searchProjectGroup(
-        'test query',
-        'zabaca-temporal-bridge'
-      );
+      const results = await memoryToolsService.searchProjectGroup('test query', 'zabaca-temporal-bridge');
 
       // Verify it was called with graphId, NOT userId
       expect(mockZepService.graph.search).toHaveBeenCalledWith({
@@ -75,8 +72,8 @@ describe('Project Search Fix Verification', () => {
       // Verify it was NOT called with userId
       expect(mockZepService.graph.search).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: expect.any(String)
-        })
+          userId: expect.any(String),
+        }),
       );
 
       // Verify the results are properly processed
@@ -116,7 +113,7 @@ describe('Project Search Fix Verification', () => {
 
       // Personal search should use userId
       const personalResults = await memoryToolsService.searchMemory('test query', 'episodes', 5);
-      
+
       expect(mockZepService.graph.search).toHaveBeenNthCalledWith(1, {
         userId: 'test-developer',
         query: 'test query',
@@ -127,7 +124,7 @@ describe('Project Search Fix Verification', () => {
 
       // Project search should use graphId
       const projectResults = await memoryToolsService.searchProjectGroup('test query', 'temporal-bridge');
-      
+
       expect(mockZepService.graph.search).toHaveBeenNthCalledWith(2, {
         graphId: 'project-temporal-bridge',
         query: 'test query',
@@ -144,7 +141,7 @@ describe('Project Search Fix Verification', () => {
     it('should confirm the fix is working by testing parameter usage', () => {
       // This test documents that the fix works by using the correct parameters
       // The key insight is that project searches now use graphId while personal searches use userId
-      
+
       const personalSearchPattern = {
         userId: expect.any(String),
         query: expect.any(String),
@@ -155,7 +152,7 @@ describe('Project Search Fix Verification', () => {
       const projectSearchPattern = {
         graphId: expect.stringMatching(/^project-/),
         query: expect.any(String),
-        scope: expect.any(String),  
+        scope: expect.any(String),
         limit: expect.any(Number),
         reranker: expect.any(String),
       };
@@ -163,7 +160,7 @@ describe('Project Search Fix Verification', () => {
       // The patterns above document the expected parameter differences
       expect(personalSearchPattern).not.toHaveProperty('graphId');
       expect(projectSearchPattern).not.toHaveProperty('userId');
-      
+
       // This test passes, confirming our understanding of the fix
       expect(true).toBe(true);
     });
@@ -173,15 +170,15 @@ describe('Project Search Fix Verification', () => {
     it('should confirm that MCP searchProject tool can now find shared knowledge', () => {
       // This is a documentation test confirming the end-to-end fix
       // Based on our manual testing, we know that:
-      
+
       // 1. searchProject MCP tool now calls searchProjectGroup method
-      // 2. searchProjectGroup method uses graphId parameter  
+      // 2. searchProjectGroup method uses graphId parameter
       // 3. graphId parameter allows access to project group graphs
       // 4. We can now successfully retrieve shared C4 architecture documents
-      
+
       const expectedBehavior = {
         before: 'searchProject returned: "Project search functionality will be implemented"',
-        after: 'searchProject returns actual shared knowledge from project graphs'
+        after: 'searchProject returns actual shared knowledge from project graphs',
       };
 
       // Manual testing confirmed this fix works:
@@ -190,7 +187,7 @@ describe('Project Search Fix Verification', () => {
         project: 'zabaca-temporal-bridge',
         foundResults: true,
         resultContent: 'TemporalBridge C4 Architecture Documentation - Complete architectural diagrams...',
-        score: 0.9991991
+        score: 0.9991991,
       };
 
       expect(expectedBehavior.after).toContain('actual shared knowledge');

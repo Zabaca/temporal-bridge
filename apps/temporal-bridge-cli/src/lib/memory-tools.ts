@@ -200,7 +200,12 @@ export class MemoryToolsService {
   /**
    * Search for facts and relationships (edges in knowledge graph)
    */
-  async searchFacts(query: string, limit = 5, minRating?: number, reranker?: Zep.Reranker | 'none'): Promise<MemorySearchResult[]> {
+  async searchFacts(
+    query: string,
+    limit = 5,
+    minRating?: number,
+    reranker?: Zep.Reranker | 'none',
+  ): Promise<MemorySearchResult[]> {
     try {
       const searchResults = await this.zepService.graph.search({
         userId: this.zepService.userId,
@@ -413,83 +418,31 @@ export class MemoryToolsService {
    * Comprehensive search method that supports all CLI use cases
    */
   async retrieveMemory(options: UnifiedMemoryQuery = {}): Promise<UnifiedMemoryResult[]> {
-    const results: UnifiedMemoryResult[] = [];
-
     try {
       // Handle debug commands
-      if (options.debugListProjects) {
-        console.log('🔍 DEBUG: Testing listProjectEntities() API call\n');
-        const result = await this.projectEntitiesService.listProjectEntities();
-        console.log('Raw API Response:', JSON.stringify(result, null, 2));
-        return [];
+      const debugResult = await this.handleDebugCommands(options);
+      if (debugResult !== null) {
+        return debugResult;
       }
 
-      if (options.debugPortfolio) {
-        console.log('🔍 DEBUG: Testing portfolio functionality\n');
-        console.log('Portfolio debug functionality not yet implemented');
-        return [];
-      }
+      const results: UnifiedMemoryResult[] = [];
 
-      if (options.debugCreateEntity) {
-        console.log('🔍 DEBUG: Creating test project entity\n');
-        const projectPath = process.cwd();
-        console.log(`Creating entity for project path: ${projectPath}`);
-
-        const result = await this.projectEntitiesService.ensureProjectEntity(projectPath, {
-          forceUpdate: true,
-          skipTechDetection: false,
-        });
-
-        console.log('Entity Creation Result:', JSON.stringify(result, null, 2));
-        return [];
-      }
-
-      // Handle query-based search using the existing searchMemory method
+      // Handle query-based search
       if (options.query) {
-        const searchScope = options.searchScope === 'edges' ? Zep.GraphSearchScope.Edges :
-                           options.searchScope === 'nodes' ? Zep.GraphSearchScope.Nodes :
-                           Zep.GraphSearchScope.Episodes;
-        const searchResults = await this.searchMemory(
-          options.query,
-          searchScope,
-          options.limit || 10,
-          options.reranker,
-        );
-
-        for (const result of searchResults) {
-          results.push({
-            content: result.content,
-            score: result.score,
-            timestamp: result.created_at,
-            type: 'graph_search',
-            metadata: {
-              ...result.metadata,
-              search_scope: options.searchScope || 'episodes',
-            },
-          });
-        }
+        const queryResults = await this.handleQuerySearch(options);
+        results.push(...queryResults);
       }
 
-      // Handle thread context retrieval - simplified for now
+      // Handle thread context retrieval
       if (options.threadId) {
-        results.push({
-          content: `Thread context for ${options.threadId} - functionality to be implemented`,
-          type: 'user_context',
-          metadata: {
-            thread_id: options.threadId,
-          },
-        });
+        const threadResult = this.handleThreadContext(options.threadId);
+        results.push(threadResult);
       }
 
-      // Handle recent episodes - simplified for now
-      if (!(options.query || options.threadId)) {
-        results.push({
-          content: 'Recent episodes - functionality to be implemented',
-          type: 'recent_episodes',
-          metadata: {
-            scope: 'recent',
-          },
-        });
+      // Handle recent episodes fallback
+      if (this.shouldShowRecentEpisodes(options)) {
+        const recentResult = this.handleRecentEpisodes();
+        results.push(recentResult);
       }
 
       return results;
@@ -497,5 +450,95 @@ export class MemoryToolsService {
       console.error('❌ Error retrieving memory:', error);
       throw error;
     }
+  }
+
+  private async handleDebugCommands(options: UnifiedMemoryQuery): Promise<UnifiedMemoryResult[] | null> {
+    if (options.debugListProjects) {
+      console.log('🔍 DEBUG: Testing listProjectEntities() API call\n');
+      const result = await this.projectEntitiesService.listProjectEntities();
+      console.log('Raw API Response:', JSON.stringify(result, null, 2));
+      return [];
+    }
+
+    if (options.debugPortfolio) {
+      console.log('🔍 DEBUG: Testing portfolio functionality\n');
+      console.log('Portfolio debug functionality not yet implemented');
+      return [];
+    }
+
+    if (options.debugCreateEntity) {
+      return await this.handleDebugCreateEntity();
+    }
+
+    return null;
+  }
+
+  private async handleDebugCreateEntity(): Promise<UnifiedMemoryResult[]> {
+    console.log('🔍 DEBUG: Creating test project entity\n');
+    const projectPath = process.cwd();
+    console.log(`Creating entity for project path: ${projectPath}`);
+
+    const result = await this.projectEntitiesService.ensureProjectEntity(projectPath, {
+      forceUpdate: true,
+      skipTechDetection: false,
+    });
+
+    console.log('Entity Creation Result:', JSON.stringify(result, null, 2));
+    return [];
+  }
+
+  private async handleQuerySearch(options: UnifiedMemoryQuery): Promise<UnifiedMemoryResult[]> {
+    if (!options.query) {
+      return [];
+    }
+
+    const searchScope = this.determineSearchScope(options.searchScope);
+    const searchResults = await this.searchMemory(options.query, searchScope, options.limit || 10, options.reranker);
+
+    return searchResults.map((result) => ({
+      content: result.content,
+      score: result.score,
+      timestamp: result.created_at,
+      type: 'graph_search',
+      metadata: {
+        ...result.metadata,
+        search_scope: options.searchScope || 'episodes',
+      },
+    }));
+  }
+
+  private determineSearchScope(searchScope?: string): Zep.GraphSearchScope {
+    switch (searchScope) {
+      case 'edges':
+        return Zep.GraphSearchScope.Edges;
+      case 'nodes':
+        return Zep.GraphSearchScope.Nodes;
+      default:
+        return Zep.GraphSearchScope.Episodes;
+    }
+  }
+
+  private handleThreadContext(threadId: string): UnifiedMemoryResult {
+    return {
+      content: `Thread context for ${threadId} - functionality to be implemented`,
+      type: 'user_context',
+      metadata: {
+        thread_id: threadId,
+      },
+    };
+  }
+
+  private shouldShowRecentEpisodes(options: UnifiedMemoryQuery): boolean {
+    return !(options.query || options.threadId);
+  }
+
+  private handleRecentEpisodes(): UnifiedMemoryResult {
+    return {
+      content: 'Recent episodes - functionality to be implemented',
+      type: 'recent_episodes',
+      metadata: {
+        scope: 'recent',
+      },
+    };
   }
 }
