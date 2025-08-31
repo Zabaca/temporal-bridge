@@ -13,10 +13,11 @@ import {
   EntityTypeSchema, 
   EdgeTypeSchema 
 } from '@getzep/zep-cloud';
+import type { z } from 'zod';
 
-// Re-export for convenience
-export type EntityType = EntityTypeSchema;
-export type EdgeType = EdgeTypeSchema;
+// Re-export for convenience - infer types from Zod schemas
+export type EntityType = z.infer<typeof EntityTypeSchema>;
+export type EdgeType = z.infer<typeof EdgeTypeSchema>;
 
 // ===============================
 // CUSTOM ENTITY TYPES
@@ -77,8 +78,11 @@ export const ArchitectureDecisionSchema: EntityType = {
  */
 export const DocumentsSchema: EdgeType = {
   description: "Architectural component or data model is documented by technical documentation",
-  source: ["Architecture", "DataModel"],
-  target: "Documentation"
+  fields: {},
+  sourceTargets: [
+    { source: "Architecture", target: "Documentation" },
+    { source: "DataModel", target: "Documentation" }
+  ]
 };
 
 /**
@@ -87,8 +91,11 @@ export const DocumentsSchema: EdgeType = {
  */
 export const ImplementsSchema: EdgeType = {
   description: "Architectural component implements an architecture decision or requirement",
-  source: "Architecture", 
-  target: ["ArchitectureDecision", "Requirement"]
+  fields: {},
+  sourceTargets: [
+    { source: "Architecture", target: "ArchitectureDecision" },
+    { source: "Architecture", target: "Requirement" }
+  ]
 };
 
 /**
@@ -97,8 +104,12 @@ export const ImplementsSchema: EdgeType = {
  */
 export const SupersedesSchema: EdgeType = {
   description: "Newer documentation, decision, or component supersedes an older version",
-  source: ["Architecture", "DataModel", "ArchitectureDecision"],
-  target: ["Architecture", "DataModel", "ArchitectureDecision"]
+  fields: {},
+  sourceTargets: [
+    { source: "Architecture", target: "Architecture" },
+    { source: "DataModel", target: "DataModel" },
+    { source: "ArchitectureDecision", target: "ArchitectureDecision" }
+  ]
 };
 
 /**
@@ -107,8 +118,10 @@ export const SupersedesSchema: EdgeType = {
  */
 export const DependsOnSchema: EdgeType = {
   description: "Architectural component has a dependency on another component",
-  source: "Architecture",
-  target: "Architecture"
+  fields: {},
+  sourceTargets: [
+    { source: "Architecture", target: "Architecture" }
+  ]
 };
 
 /**
@@ -117,8 +130,10 @@ export const DependsOnSchema: EdgeType = {
  */
 export const UsesDataModelSchema: EdgeType = {
   description: "Architectural component uses or manipulates a specific data model",
-  source: "Architecture",
-  target: "DataModel"
+  fields: {},
+  sourceTargets: [
+    { source: "Architecture", target: "DataModel" }
+  ]
 };
 
 /**
@@ -127,8 +142,11 @@ export const UsesDataModelSchema: EdgeType = {
  */
 export const AffectedBySchema: EdgeType = {
   description: "Component or data model is affected by an architectural decision",
-  source: ["Architecture", "DataModel"],
-  target: "ArchitectureDecision"
+  fields: {},
+  sourceTargets: [
+    { source: "Architecture", target: "ArchitectureDecision" },
+    { source: "DataModel", target: "ArchitectureDecision" }
+  ]
 };
 
 // ===============================
@@ -195,12 +213,12 @@ export function validateOntologyLimits(): {
   }
 
   // Validate field counts for each entity type
-  Object.entries(DocumentationEntityTypes).forEach(([name, schema]) => {
+  for (const [name, schema] of Object.entries(DocumentationEntityTypes)) {
     const fieldCount = Object.keys(schema.fields).length;
     if (fieldCount > ONTOLOGY_LIMITS.MAX_FIELDS_PER_TYPE) {
       errors.push(`${name} has ${fieldCount} fields, exceeding limit of ${ONTOLOGY_LIMITS.MAX_FIELDS_PER_TYPE}`);
     }
-  });
+  }
 
   return {
     valid: errors.length === 0,

@@ -3,6 +3,7 @@
  * Structured functions for memory search and retrieval via MCP
  */
 
+import type { Zep } from '@getzep/zep-cloud';
 import { Injectable } from '@nestjs/common';
 import { detectProject } from './project-detector';
 import { ProjectEntitiesService } from './project-entities';
@@ -263,14 +264,7 @@ export class MemoryToolsService {
   ) {
     const enhancedQuery = projectFilter ? `${query} ${projectFilter}` : query;
 
-    const searchParams: {
-      query: string;
-      scope: 'edges' | 'nodes' | 'episodes';
-      limit: number;
-      reranker?: string;
-      userId?: string;
-      graphId?: string;
-    } = {
+    const searchParams: Zep.GraphSearchQuery = {
       query: enhancedQuery,
       scope: scope as 'edges' | 'nodes' | 'episodes',
       limit,
@@ -284,7 +278,7 @@ export class MemoryToolsService {
       searchParams.userId = this.zepService.userId;
     }
 
-    return await this.zepService.graph.search(searchParams as any);
+    return await this.zepService.graph.search(searchParams);
   }
 
   private processSearchResults(searchResults: unknown, scope: string, projectFilter?: string): MemorySearchResult[] {

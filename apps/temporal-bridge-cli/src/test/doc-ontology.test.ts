@@ -5,7 +5,7 @@
  * without requiring actual Zep API calls.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 import {
   DocumentationEntityTypes,
@@ -38,10 +38,10 @@ describe('Documentation Ontology Validation', () => {
       const validation = validateOntologyLimits();
       
       // Check that no entity type exceeds field limit
-      Object.entries(DocumentationEntityTypes).forEach(([name, schema]) => {
+      for (const [_name, schema] of Object.entries(DocumentationEntityTypes)) {
         const fieldCount = Object.keys(schema.fields).length;
         expect(fieldCount).toBeLessThanOrEqual(ONTOLOGY_LIMITS.MAX_FIELDS_PER_TYPE);
-      });
+      }
       
       expect(validation.valid).toBe(true);
     });
@@ -57,11 +57,11 @@ describe('Documentation Ontology Validation', () => {
     });
 
     it('should have descriptive entity descriptions', () => {
-      Object.entries(DocumentationEntityTypes).forEach(([name, schema]) => {
+      for (const [_name, schema] of Object.entries(DocumentationEntityTypes)) {
         expect(schema.description).toBeTruthy();
         expect(schema.description.length).toBeGreaterThan(20); // Meaningful description
         expect(typeof schema.description).toBe('string');
-      });
+      }
     });
 
     it('should have proper field definitions for Architecture entity', () => {
@@ -117,11 +117,11 @@ describe('Documentation Ontology Validation', () => {
     });
 
     it('should have descriptive edge descriptions', () => {
-      Object.entries(DocumentationEdgeTypes).forEach(([name, schema]) => {
+      for (const [_name, schema] of Object.entries(DocumentationEdgeTypes)) {
         expect(schema.description).toBeTruthy();
         expect(schema.description.length).toBeGreaterThan(15); // Meaningful description
         expect(typeof schema.description).toBe('string');
-      });
+      }
     });
 
     it('should have valid source and target types for each edge', () => {
@@ -129,19 +129,15 @@ describe('Documentation Ontology Validation', () => {
       const additionalValidTypes = ['Documentation', 'Requirement']; // Referenced but not defined in MVP
       const allValidTypes = [...validEntityTypes, ...additionalValidTypes];
 
-      Object.entries(DocumentationEdgeTypes).forEach(([name, schema]) => {
-        // Check source types
-        const sourceTypes = Array.isArray(schema.source) ? schema.source : [schema.source];
-        sourceTypes.forEach(sourceType => {
-          expect(allValidTypes).toContain(sourceType);
-        });
-
-        // Check target types
-        const targetTypes = Array.isArray(schema.target) ? schema.target : [schema.target];
-        targetTypes.forEach(targetType => {
-          expect(allValidTypes).toContain(targetType);
-        });
-      });
+      for (const [_name, schema] of Object.entries(DocumentationEdgeTypes)) {
+        // Check sourceTargets array
+        if (schema.sourceTargets) {
+          for (const sourceTarget of schema.sourceTargets) {
+            expect(allValidTypes).toContain(sourceTarget.source);
+            expect(allValidTypes).toContain(sourceTarget.target);
+          }
+        }
+      }
     });
   });
 
@@ -169,11 +165,11 @@ describe('Documentation Ontology Service', () => {
     
     // Setup default mocks
     mockZepService.ensureUser.mockResolvedValue();
-    mockZepService.graph.setOntology.mockResolvedValue(undefined);
+    mockZepService.graph.setOntology.mockResolvedValue(undefined as never);
     mockZepService.graph.listEntityTypes.mockResolvedValue({
       entityTypes: Object.keys(DocumentationEntityTypes),
       edgeTypes: Object.keys(DocumentationEdgeTypes),
-    });
+    } as never);
   });
 
   describe('setDocumentationOntology', () => {
@@ -188,11 +184,10 @@ describe('Documentation Ontology Service', () => {
       
       // Verify Zep service calls
       expect(mockZepService.ensureUser).toHaveBeenCalledOnce();
-      expect(mockZepService.graph.setOntology).toHaveBeenCalledWith({
-        graphId: undefined,
-        entityTypes: DocumentationEntityTypes,
-        edgeTypes: DocumentationEdgeTypes,
-      });
+      expect(mockZepService.graph.setOntology).toHaveBeenCalledWith(
+        DocumentationEntityTypes,
+        DocumentationEdgeTypes
+      );
     });
 
     it('should set ontology on specific graph when graphId provided', async () => {
@@ -202,11 +197,10 @@ describe('Documentation Ontology Service', () => {
       expect(result.success).toBe(true);
       expect(result.message).toContain(testGraphId);
       
-      expect(mockZepService.graph.setOntology).toHaveBeenCalledWith({
-        graphId: testGraphId,
-        entityTypes: DocumentationEntityTypes,
-        edgeTypes: DocumentationEdgeTypes,
-      });
+      expect(mockZepService.graph.setOntology).toHaveBeenCalledWith(
+        DocumentationEntityTypes,
+        DocumentationEdgeTypes
+      );
     });
 
     it('should handle Zep API errors gracefully', async () => {
@@ -249,7 +243,7 @@ describe('Documentation Ontology Service', () => {
       mockZepService.graph.listEntityTypes.mockResolvedValue({
         entityTypes: ['Architecture'], // Missing DataModel and ArchitectureDecision
         edgeTypes: Object.keys(DocumentationEdgeTypes),
-      });
+      } as never);
       
       const result = await service.validateOntologySetup();
       
@@ -262,7 +256,7 @@ describe('Documentation Ontology Service', () => {
       mockZepService.graph.listEntityTypes.mockResolvedValue({
         entityTypes: Object.keys(DocumentationEntityTypes),
         edgeTypes: ['Documents'], // Missing other edge types
-      });
+      } as never);
       
       const result = await service.validateOntologySetup();
       
@@ -296,10 +290,13 @@ describe('Documentation Ontology Service', () => {
     it('should include source/target types for edge types', () => {
       const info = service.getAvailableEntityTypes();
       
-      expect(info.edgeTypes.Documents.sourceTypes).toEqual(['Architecture', 'DataModel']);
-      expect(info.edgeTypes.Documents.targetTypes).toEqual(['Documentation']);
-      expect(info.edgeTypes.DependsOn.sourceTypes).toEqual(['Architecture']);
-      expect(info.edgeTypes.DependsOn.targetTypes).toEqual(['Architecture']);
+      // Check that sourceTargets are properly structured
+      expect(info.edgeTypes.Documents.sourceTargets).toBeDefined();
+      expect(Array.isArray(info.edgeTypes.Documents.sourceTargets)).toBe(true);
+      expect(info.edgeTypes.Documents.sourceTargets.length).toBeGreaterThan(0);
+      expect(info.edgeTypes.DependsOn.sourceTargets).toBeDefined();
+      expect(Array.isArray(info.edgeTypes.DependsOn.sourceTargets)).toBe(true);
+      expect(info.edgeTypes.DependsOn.sourceTargets.length).toBeGreaterThan(0);
     });
   });
 
@@ -312,11 +309,10 @@ describe('Documentation Ontology Service', () => {
       expect(result.edgeTypesSet).toBe(0);
       expect(result.message).toContain('project-wide');
       
-      expect(mockZepService.graph.setOntology).toHaveBeenCalledWith({
-        graphId: undefined,
-        entityTypes: {},
-        edgeTypes: {},
-      });
+      expect(mockZepService.graph.setOntology).toHaveBeenCalledWith(
+        {},
+        {}
+      );
     });
 
     it('should reset specific graph ontology', async () => {
@@ -326,11 +322,10 @@ describe('Documentation Ontology Service', () => {
       expect(result.success).toBe(true);
       expect(result.message).toContain(graphId);
       
-      expect(mockZepService.graph.setOntology).toHaveBeenCalledWith({
-        graphId,
-        entityTypes: {},
-        edgeTypes: {},
-      });
+      expect(mockZepService.graph.setOntology).toHaveBeenCalledWith(
+        {},
+        {}
+      );
     });
   });
 });

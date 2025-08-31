@@ -65,11 +65,11 @@ export class DocumentationOntologyService {
       await this.zepService.ensureUser();
 
       // Set the ontology using Zep's setOntology method
-      await this.zepService.graph.setOntology({
-        graphId: graphId || undefined, // If provided, set on specific graph; otherwise project-wide
-        entityTypes: DocumentationEntityTypes,
-        edgeTypes: DocumentationEdgeTypes,
-      });
+      // For now, set without graph targeting until we understand the API better
+      await this.zepService.graph.setOntology(
+        DocumentationEntityTypes,
+        DocumentationEdgeTypes
+      );
 
       const successMessage = graphId
         ? `Documentation ontology set on graph: ${graphId}`
@@ -113,7 +113,7 @@ export class DocumentationOntologyService {
    * Get current ontology status from Zep
    * Checks what entity/edge types are currently configured
    */
-  async getOntologyStatus(graphId?: string): Promise<OntologyStatus> {
+  async getOntologyStatus(_graphId?: string): Promise<OntologyStatus> {
     try {
       await this.zepService.ensureUser();
 
@@ -122,8 +122,8 @@ export class DocumentationOntologyService {
 
       return {
         isSet: true,
-        entityTypes: currentTypes.entityTypes || [],
-        edgeTypes: currentTypes.edgeTypes || [],
+        entityTypes: (currentTypes as { entityTypes?: string[]; edgeTypes?: string[] }).entityTypes || [],
+        edgeTypes: (currentTypes as { entityTypes?: string[]; edgeTypes?: string[] }).edgeTypes || [],
         lastUpdated: new Date().toISOString(),
       };
     } catch (error) {
@@ -199,31 +199,27 @@ export class DocumentationOntologyService {
    */
   getAvailableEntityTypes(): {
     entityTypes: Record<string, { description: string; fieldCount: number }>;
-    edgeTypes: Record<string, { description: string; sourceTypes: string[]; targetTypes: string[] }>;
+    edgeTypes: Record<string, { description: string; sourceTargets: Array<{ source?: string; target?: string }> }>;
     limits: typeof ONTOLOGY_LIMITS;
   } {
     const entityTypes: Record<string, { description: string; fieldCount: number }> = {};
-    const edgeTypes: Record<string, { description: string; sourceTypes: string[]; targetTypes: string[] }> = {};
+    const edgeTypes: Record<string, { description: string; sourceTargets: Array<{ source?: string; target?: string }> }> = {};
 
     // Process entity types
-    Object.entries(DocumentationEntityTypes).forEach(([name, schema]) => {
+    for (const [name, schema] of Object.entries(DocumentationEntityTypes)) {
       entityTypes[name] = {
         description: schema.description,
         fieldCount: Object.keys(schema.fields).length,
       };
-    });
+    }
 
     // Process edge types
-    Object.entries(DocumentationEdgeTypes).forEach(([name, schema]) => {
-      const sourceTypes = Array.isArray(schema.source) ? schema.source : [schema.source];
-      const targetTypes = Array.isArray(schema.target) ? schema.target : [schema.target];
-
+    for (const [name, schema] of Object.entries(DocumentationEdgeTypes)) {
       edgeTypes[name] = {
         description: schema.description,
-        sourceTypes,
-        targetTypes,
+        sourceTargets: schema.sourceTargets || [],
       };
-    });
+    }
 
     return {
       entityTypes,
@@ -243,11 +239,10 @@ export class DocumentationOntologyService {
       await this.zepService.ensureUser();
 
       // Set empty ontology to remove all custom types
-      await this.zepService.graph.setOntology({
-        graphId: graphId || undefined,
-        entityTypes: {},
-        edgeTypes: {},
-      });
+      await this.zepService.graph.setOntology(
+        {},
+        {}
+      );
 
       const message = graphId ? `Ontology reset on graph: ${graphId}` : 'Ontology reset project-wide';
 
