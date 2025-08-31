@@ -3,8 +3,8 @@ import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { Command, CommandRunner, Option } from 'nest-commander';
 import * as yaml from 'yaml';
-import { StoreConversationCommand } from './store-conversation.command';
 import { HookData } from '../lib/types';
+import { StoreConversationCommand } from './store-conversation.command';
 
 @Injectable()
 @Command({
@@ -43,28 +43,27 @@ export class HookCommand extends CommandRunner {
     }
   }
 
-
   private async handleStopHook(
     options: { sessionId?: string; transcriptPath?: string; cwd?: string },
-    hookData?: HookData | null
+    hookData?: HookData | null,
   ): Promise<void> {
     const sessionId = options.sessionId || hookData?.session_id;
     const transcriptPath = options.transcriptPath || hookData?.transcript_path;
     const cwd = options.cwd || hookData?.cwd || process.cwd();
-    
+
     if (!sessionId) {
       console.error('Missing session ID. Hook message should provide session_id.');
       process.exit(1);
     }
-    
+
     if (!transcriptPath) {
       console.error('Missing transcript path. Hook message should provide transcript_path.');
       process.exit(1);
     }
-    
+
     console.log(`Processing conversation for session: ${sessionId}`);
     console.log(`Reading transcript from: ${transcriptPath}`);
-    
+
     await this.storeConversationCommand.run([], {
       sessionId,
       transcriptPath,
@@ -77,25 +76,22 @@ export class HookCommand extends CommandRunner {
       if (process.stdin.isTTY) {
         return null; // No stdin data available
       }
-      
+
       const input = await this.readStdin();
       const data = JSON.parse(input) as HookData;
-      
+
       // Validate required fields based on hook type
       if (data.session_id) {
         return data;
       }
-      
+
       return null;
     } catch {
       return null;
     }
   }
 
-  private async handleSessionStartHook(
-    options: { sessionId?: string },
-    hookData?: HookData | null
-  ): Promise<void> {
+  private async handleSessionStartHook(options: { sessionId?: string }, hookData?: HookData | null): Promise<void> {
     try {
       const sessionId = options.sessionId || hookData?.session_id;
 

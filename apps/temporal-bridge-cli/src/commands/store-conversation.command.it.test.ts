@@ -42,20 +42,42 @@ describe('StoreConversationCommand Integration Test', () => {
     vi.clearAllMocks();
 
     // Setup service mocks
-    mockSessionManager.updateSessionInfo.mockResolvedValue(undefined);
+    mockSessionManager.updateSessionInfo.mockResolvedValue({
+      sessionId: 'test-session',
+      lastUpdated: '2024-01-01T00:00:00Z',
+      metadata: { source: 'test' },
+    });
     mockSessionManager.shouldProcessProjectEntity.mockResolvedValue(true);
     mockSessionManager.markProjectEntityProcessed.mockResolvedValue(undefined);
     mockProjectEntitiesService.ensureProjectEntity.mockResolvedValue({
       success: true,
-      projectEntity: { name: 'test-project' },
+      projectEntity: {
+        name: 'test-project',
+        type: 'Project',
+        properties: {
+          displayName: 'Test Project',
+          projectType: 'git',
+          technologies: ['TypeScript'],
+          path: '/test/path',
+          created: '2024-01-01T00:00:00Z',
+          lastUpdated: '2024-01-01T00:00:00Z',
+          confidence: { TypeScript: 0.9 },
+        },
+      },
       message: 'Created project entity',
     });
     mockProjectEntitiesService.createSessionProjectRelationship.mockResolvedValue({
       success: true,
       message: 'Session linked to project',
     });
-    mockZepService.thread.addMessages.mockResolvedValue(undefined);
-    mockZepService.graph.add.mockResolvedValue(undefined);
+    mockZepService.thread.addMessages.mockResolvedValue({
+      messageUuids: ['msg-uuid-1', 'msg-uuid-2'],
+    });
+    mockZepService.graph.add.mockResolvedValue({
+      uuid: 'test-uuid',
+      createdAt: '2024-01-01T00:00:00Z',
+      content: 'test content',
+    });
   });
 
   describe('Command Execution', () => {

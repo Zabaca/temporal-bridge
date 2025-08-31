@@ -124,10 +124,10 @@ export class StoreConversationCommand extends CommandRunner {
   private async storeMessagesInZep(messages: ParsedMessage[], threadId: string, sessionId: string, userId: string) {
     // Ensure user exists before creating thread or adding messages
     await this.zepService.ensureUser(userId);
-    
+
     // Ensure thread exists before adding messages
     await this.zepService.ensureThread(threadId, userId);
-    
+
     const storedUuids = await this.loadStoredUuids(sessionId);
     const newMessages = messages.filter((msg) => !(msg.uuid && storedUuids.has(msg.uuid)));
 

@@ -85,7 +85,7 @@
         "noImplicitAnyLet": "error",
         "noShadowRestrictedNames": "error",
         "noVar": "error",
-        "useAwait": "error",
+        "useAwait": "off",
         "useDefaultSwitchClauseLast": "error"
       }
     }

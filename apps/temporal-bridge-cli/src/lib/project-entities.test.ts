@@ -16,7 +16,7 @@ vi.mock('node:fs', () => ({
 vi.mock('node:path', async (importOriginal) => {
   const actual = await importOriginal();
   return {
-    ...(actual as any),
+    ...(actual as typeof import('node:path')),
     resolve: vi.fn((...args) => args.join('/')),
     join: vi.fn((...args) => args.join('/')),
     dirname: vi.fn((p) => p.split('/').slice(0, -1).join('/')),
@@ -35,11 +35,12 @@ describe('ProjectEntitiesService', () => {
     // Mock project detector
     vi.spyOn(projectDetector, 'detectProject').mockResolvedValue({
       projectId: 'test-project',
-      displayName: 'Test Project',
+      groupId: 'project-test-project',
+      projectPath: '/test/project',
+      projectName: 'Test Project',
       organization: 'TestOrg',
-      repository: 'https://github.com/test/test-project.git',
+      gitRemote: 'https://github.com/test/test-project.git',
       projectType: 'git' as const,
-      path: '/test/project',
     });
 
     vi.spyOn(projectDetector, 'detectProjectTechnologies').mockResolvedValue({
@@ -47,11 +48,17 @@ describe('ProjectEntitiesService', () => {
         { name: 'TypeScript', confidence: 0.9, source: 'package.json' },
         { name: 'Node.js', confidence: 0.95, source: 'package.json' },
       ],
-      summary: 'TypeScript Node.js project',
+      overallConfidence: 0.925,
+      detectedAt: '2024-01-01T00:00:00Z',
+      projectPath: '/test/project',
     });
 
     // Setup successful Zep responses
-    mockZepService.graph.add.mockResolvedValue(undefined);
+    mockZepService.graph.add.mockResolvedValue({
+      uuid: 'test-uuid',
+      createdAt: '2024-01-01T00:00:00Z',
+      content: 'test content',
+    });
   });
 
   it('should create a project entity successfully', async () => {
@@ -75,9 +82,7 @@ describe('ProjectEntitiesService', () => {
   });
 
   it('should create session-project relationships', async () => {
-    const result = await service.createSessionProjectRelationship('claude-code-test-123', 'test-project', {
-      metadata: { source: 'test' },
-    });
+    const result = await service.createSessionProjectRelationship('claude-code-test-123', 'test-project');
 
     expect(result.success).toBe(true);
     expect(mockZepService.graph.add).toHaveBeenCalled();
