@@ -1,13 +1,12 @@
-import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { TestingModule } from '@nestjs/testing';
-import { mockDeep } from 'vitest-mock-extended';
 import * as path from 'node:path';
-import * as os from 'node:os';
+import { TestingModule } from '@nestjs/testing';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
+import { ProjectEntitiesService } from '../lib/project-entities';
+import { SessionManager } from '../lib/session-manager';
+import { ZepService } from '../lib/zep-client';
 import { setupTestApp } from '../test/test-helpers';
 import { StoreConversationCommand } from './store-conversation.command';
-import { ZepService } from '../lib/zep-client';
-import { SessionManager } from '../lib/session-manager';
-import { ProjectEntitiesService } from '../lib/project-entities';
 
 // Mock os.homedir to control home directory path
 vi.mock('node:os', () => ({
@@ -41,7 +40,7 @@ describe('StoreConversationCommand Integration Test', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Setup service mocks
     mockSessionManager.updateSessionInfo.mockResolvedValue(undefined);
     mockSessionManager.shouldProcessProjectEntity.mockResolvedValue(true);
@@ -62,7 +61,7 @@ describe('StoreConversationCommand Integration Test', () => {
   describe('Command Execution', () => {
     it('should successfully process a valid conversation transcript', async () => {
       const testFixturePath = path.join(__dirname, '../test/fixtures/sample-transcript.jsonl');
-      
+
       const options = {
         sessionId: 'test-session-123',
         transcriptPath: testFixturePath,
@@ -97,7 +96,7 @@ describe('StoreConversationCommand Integration Test', () => {
 
     it('should handle empty transcript gracefully', async () => {
       const testFixturePath = path.join(__dirname, '../test/fixtures/empty-transcript.jsonl');
-      
+
       const options = {
         sessionId: 'test-session-empty',
         transcriptPath: testFixturePath,
@@ -113,7 +112,7 @@ describe('StoreConversationCommand Integration Test', () => {
 
     it('should handle malformed transcript lines gracefully', async () => {
       const testFixturePath = path.join(__dirname, '../test/fixtures/malformed-transcript.jsonl');
-      
+
       const options = {
         sessionId: 'test-session-malformed',
         transcriptPath: testFixturePath,
@@ -122,7 +121,9 @@ describe('StoreConversationCommand Integration Test', () => {
 
       // Mock process.exit and console.error to prevent actual exit
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-      const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {
+        // Intentionally empty - we want to suppress console output during tests
+      });
 
       await storeConversationCommand.run([], options);
 
@@ -132,7 +133,6 @@ describe('StoreConversationCommand Integration Test', () => {
       mockConsoleError.mockRestore();
     });
 
-
     it('should handle file read errors', async () => {
       const options = {
         sessionId: 'test-session-error',
@@ -140,11 +140,13 @@ describe('StoreConversationCommand Integration Test', () => {
         cwd: '/test/project',
       };
 
-      // Mock process.exit to prevent actual exit  
+      // Mock process.exit to prevent actual exit
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-      
+
       // Mock console.error to prevent error output
-      const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {
+        // Intentionally empty - we want to suppress console output during tests
+      });
 
       await storeConversationCommand.run([], options);
 
@@ -177,7 +179,7 @@ describe('StoreConversationCommand Integration Test', () => {
         message: 'Failed to create entity',
         error: 'Connection error',
       });
-      
+
       const testFixturePath = path.join(__dirname, '../test/fixtures/sample-transcript.jsonl');
 
       const options = {

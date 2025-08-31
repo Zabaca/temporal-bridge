@@ -1,20 +1,16 @@
-import { defineConfig } from 'vitest/config';
 import swc from 'unplugin-swc';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
     environment: 'node',
-    
+
     // Test file patterns
-    include: [
-      '**/*.test.ts',
-      '**/*.it.test.ts', 
-      '**/*.e2e.it.test.ts',
-    ],
-    
+    include: ['**/*.test.ts', '**/*.it.test.ts', '**/*.e2e.it.test.ts'],
+
     // Setup files
     setupFiles: ['./src/test/setup.ts'],
-    
+
     // Coverage configuration
     coverage: {
       provider: 'v8',
@@ -27,12 +23,12 @@ export default defineConfig({
         'dist/**',
       ],
     },
-    
+
     // Clear mocks between tests
     clearMocks: true,
     restoreMocks: true,
   },
-  
+
   // Module resolution
   resolve: {
     alias: {
@@ -45,7 +41,7 @@ export default defineConfig({
   plugins: [
     swc.vite({
       module: {
-        type: 'es6'
+        type: 'es6',
       },
     }),
   ],

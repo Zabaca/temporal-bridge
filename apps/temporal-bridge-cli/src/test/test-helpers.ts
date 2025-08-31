@@ -6,9 +6,7 @@ type Override = {
   useValue: unknown;
 };
 
-export async function setupTestApp(
-  overrides: Override[] = [],
-): Promise<{ module: TestingModule }> {
+export async function setupTestApp(overrides: Override[] = []): Promise<{ module: TestingModule }> {
   try {
     const moduleBuilder = Test.createTestingModule({
       imports: [AppModule],
