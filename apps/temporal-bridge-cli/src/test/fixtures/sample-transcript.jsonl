@@ -1,0 +1,2 @@
+{"type": "user", "message": {"content": "Hello, how are you?"}, "uuid": "msg-1", "timestamp": "2024-01-01T10:00:00Z"}
+{"type": "assistant", "message": {"content": [{"type": "text", "text": "I am doing well, thank you!"}]}, "uuid": "msg-2", "parentUuid": "msg-1", "timestamp": "2024-01-01T10:01:00Z"}

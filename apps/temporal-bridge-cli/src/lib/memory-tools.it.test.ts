@@ -1,11 +1,11 @@
-import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import type * as Zep from '@getzep/zep-cloud/dist/cjs/api';
+import { createMock } from '@golevelup/ts-vitest';
 import { TestingModule } from '@nestjs/testing';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 import { setupTestApp } from '../test/test-helpers';
 import { MemoryToolsService } from './memory-tools';
 import { ZepService } from './zep-client';
-import type * as Zep from '@getzep/zep-cloud/dist/cjs/api';
-import {createMock} from "@golevelup/ts-vitest";
 
 describe('MemoryToolsService Integration Test', () => {
   let testModule: TestingModule;
@@ -17,9 +17,7 @@ describe('MemoryToolsService Integration Test', () => {
   });
 
   beforeAll(async () => {
-    const setupResult = await setupTestApp([
-      { provide: ZepService, useValue: mockZepService },
-    ]);
+    const setupResult = await setupTestApp([{ provide: ZepService, useValue: mockZepService }]);
     testModule = setupResult.module;
     memoryToolsService = testModule.get(MemoryToolsService);
   });
@@ -35,7 +33,7 @@ describe('MemoryToolsService Integration Test', () => {
   describe('searchFacts() - Simple Integration Test', () => {
     it('should search facts using native Vitest mocking', async () => {
       // Create mock search results as plain object (no proxies!)
-     const mockSearchResults  = createMock<Zep.GraphSearchResults>({
+      const mockSearchResults = createMock<Zep.GraphSearchResults>({
         edges: [
           {
             fact: 'developer USES TypeScript',
@@ -54,16 +52,16 @@ describe('MemoryToolsService Integration Test', () => {
 
       // Debug: Check if mock was called
       expect(mockZepService.graph.search).toHaveBeenCalled();
-      
+
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(1);
-      console.log(result[0])
+      console.log(result[0]);
       // Test individual properties first
       expect(result[0].fact).toBe('developer USES TypeScript');
       expect(result[0].score).toBe(0.95);
       expect(result[0].source_episodes).toEqual(['episode-123']);
-      
+
       // Now test full object equality - should work perfectly in Vitest!
       expect(result[0]).toEqual({
         fact: 'developer USES TypeScript',
@@ -73,7 +71,7 @@ describe('MemoryToolsService Integration Test', () => {
         valid_at: undefined,
         source_episodes: ['episode-123'],
       });
-      
+
       // Even toStrictEqual should work in Vitest (unlike Jest with proxies)
       expect(result[0]).toStrictEqual({
         fact: 'developer USES TypeScript',
