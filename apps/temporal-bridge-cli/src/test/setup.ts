@@ -1,4 +1,5 @@
+// Vitest global setup for tests
 import { setupTestEnvironment } from './test-helpers';
 
-// Setup test environment before all tests
+// Set up test environment
 setupTestEnvironment();
