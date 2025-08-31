@@ -63,14 +63,14 @@ describe('MCP Tools Integration Test', () => {
           score: 0.95,
           type: 'episode',
           created_at: '2024-01-01T10:00:00Z',
-          metadata: { sessionId: 'test-session' },
+          metadata: { scope: 'personal', sessionId: 'test-session' },
         },
         {
           content: 'Debugging Node.js memory leaks using heapdump',
           score: 0.87,
           type: 'episode',
           created_at: '2024-01-01T09:00:00Z',
-          metadata: { sessionId: 'test-session-2' },
+          metadata: { scope: 'personal', sessionId: 'test-session-2' },
         },
       ]);
 
@@ -155,7 +155,7 @@ describe('MCP Tools Integration Test', () => {
           score: 0.92,
           type: 'episode',
           created_at: '2024-01-01T12:00:00Z',
-          metadata: { sessionId: 'personal-session' },
+          metadata: { scope: 'personal', sessionId: 'personal-session' },
         },
       ]);
 
@@ -191,7 +191,7 @@ describe('MCP Tools Integration Test', () => {
           score: 1.0,
           type: 'episode',
           created_at: '2024-01-01T15:00:00Z',
-          metadata: { sessionId: 'recent-session' },
+          metadata: { scope: 'personal', sessionId: 'recent-session' },
         },
       ]);
 
@@ -207,7 +207,7 @@ describe('MCP Tools Integration Test', () => {
             content: 'Recent conversation about testing patterns',
             score: 1.0,
             timestamp: '2024-01-01T15:00:00Z',
-            metadata: { sessionId: 'recent-session' },
+            metadata: { scope: 'personal', sessionId: 'recent-session' },
           },
         ],
         count: 1,
@@ -220,11 +220,12 @@ describe('MCP Tools Integration Test', () => {
       mockProjectEntitiesService.getCurrentProjectContext.mockResolvedValue({
         success: true,
         project: {
-          name: 'temporal-bridge',
-          path: '/test/temporal-bridge',
+          projectId: 'temporal-bridge',
+          projectName: 'temporal-bridge',
+          projectPath: '/test/temporal-bridge',
           technologies: ['TypeScript', 'Node.js'],
+          sessionCount: 5,
         },
-        message: 'Project context retrieved successfully',
       });
 
       const result = await temporalBridgeToolsService.getCurrentContext();
@@ -234,9 +235,11 @@ describe('MCP Tools Integration Test', () => {
       expect(result).toEqual({
         success: true,
         project: {
-          name: 'temporal-bridge',
-          path: '/test/temporal-bridge',
+          projectId: 'temporal-bridge',
+          projectName: 'temporal-bridge',
+          projectPath: '/test/temporal-bridge',
           technologies: ['TypeScript', 'Node.js'],
+          sessionCount: 5,
         },
         timestamp: expect.any(String), // ISO timestamp
       });
@@ -441,8 +444,7 @@ describe('MCP Tools Integration Test', () => {
     it('should handle service errors gracefully in share_knowledge', async () => {
       mockMemoryToolsService.shareToProjectGroup.mockResolvedValue({
         success: false,
-        message: 'Failed to share knowledge',
-        error: 'API rate limit exceeded',
+        message: 'Failed to share knowledge: API rate limit exceeded',
       });
 
       const result = await temporalBridgeToolsService.shareKnowledge({
@@ -451,7 +453,7 @@ describe('MCP Tools Integration Test', () => {
 
       expect(result).toEqual({
         success: false,
-        message: 'Failed to share knowledge',
+        message: 'Failed to share knowledge: API rate limit exceeded',
         graphId: undefined,
       });
     });

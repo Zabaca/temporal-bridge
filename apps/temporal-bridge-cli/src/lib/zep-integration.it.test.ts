@@ -74,6 +74,10 @@ describe('Zep API Integration Test', () => {
         edges: [
           {
             fact: 'developer PREFERS Vitest',
+            name: 'PREFERS',
+            sourceNodeUuid: 'developer-uuid',
+            targetNodeUuid: 'vitest-uuid',
+            uuid: 'edge-uuid',
             score: 0.92,
             createdAt: '2024-01-01T12:00:00Z',
             episodes: ['episode-testing-123'],
@@ -114,11 +118,13 @@ describe('Zep API Integration Test', () => {
             content: 'Discussed testing patterns and best practices',
             score: 0.89,
             createdAt: '2024-01-01T14:00:00Z',
+            uuid: 'episode-uuid-1',
           },
           {
             content: 'Implemented unit tests for React components',
             score: 0.85,
             createdAt: '2024-01-01T13:00:00Z',
+            uuid: 'episode-uuid-2',
           },
         ],
       };
@@ -156,7 +162,11 @@ describe('Zep API Integration Test', () => {
     });
 
     it('should share knowledge to project group via mocked ZepService', async () => {
-      mockZepService.graph.add.mockResolvedValue(undefined);
+      mockZepService.graph.add.mockResolvedValue({
+        uuid: 'test-uuid',
+        createdAt: '2024-01-01T00:00:00Z',
+        content: 'test content',
+      });
 
       const result = await memoryToolsService.shareToProjectGroup(
         'We decided to use TypeScript strict mode for better type safety',
@@ -205,7 +215,7 @@ describe('Zep API Integration Test', () => {
 
     it('should handle invalid API responses gracefully', async () => {
       // Return malformed response
-      mockZepService.graph.search.mockResolvedValue(null);
+      mockZepService.graph.search.mockResolvedValue({ edges: [], nodes: [], episodes: [] });
 
       const results = await memoryToolsService.searchFacts('test query', 5);
 
@@ -230,7 +240,11 @@ describe('Zep API Integration Test', () => {
     });
 
     it('should generate project-specific graph IDs correctly', async () => {
-      mockZepService.graph.add.mockResolvedValue(undefined);
+      mockZepService.graph.add.mockResolvedValue({
+        uuid: 'test-uuid',
+        createdAt: '2024-01-01T00:00:00Z',
+        content: 'test content',
+      });
 
       await memoryToolsService.shareToProjectGroup('Test knowledge', 'my-project');
 
@@ -243,17 +257,18 @@ describe('Zep API Integration Test', () => {
     });
 
     it('should use consistent thread ID formats', async () => {
-      mockZepService.thread.addMessages.mockResolvedValue(undefined);
+      mockZepService.thread.addMessages.mockResolvedValue({
+        messageUuids: ['msg-uuid-1', 'msg-uuid-2'],
+      });
 
       // Simulate how StoreConversationCommand would use the service
       await mockZepService.thread.addMessages({
         threadId: 'claude-code-session-abc123',
         messages: [
           {
-            uuid: 'msg-1',
-            created_at: '2024-01-01T10:00:00Z',
             role: 'user',
             content: 'Test message',
+            name: 'Developer',
           },
         ],
       });
@@ -271,6 +286,10 @@ describe('Zep API Integration Test', () => {
         edges: [
           {
             fact: 'developer USES TypeScript',
+            name: 'USES',
+            sourceNodeUuid: 'developer-uuid',
+            targetNodeUuid: 'typescript-uuid',
+            uuid: 'edge-uuid-3',
             score: 0.95,
             createdAt: '2024-01-01T00:00:00Z',
             episodes: ['episode-123'],
@@ -281,6 +300,7 @@ describe('Zep API Integration Test', () => {
             content: 'Discussion about TypeScript benefits',
             score: 0.88,
             createdAt: '2024-01-01T01:00:00Z',
+            uuid: 'episode-uuid-3',
           },
         ],
       };
@@ -318,9 +338,27 @@ describe('Zep API Integration Test', () => {
 
     it('should handle mixed search scopes correctly', async () => {
       const mockResults: Zep.GraphSearchResults = {
-        edges: [{ fact: 'test fact', score: 0.9, createdAt: '2024-01-01T00:00:00Z' }],
-        nodes: [{ name: 'test node', score: 0.8, createdAt: '2024-01-01T00:00:00Z' }],
-        episodes: [{ content: 'test episode', score: 0.7, createdAt: '2024-01-01T00:00:00Z' }],
+        edges: [
+          {
+            fact: 'test fact',
+            name: 'TEST_RELATION',
+            sourceNodeUuid: 'source-uuid',
+            targetNodeUuid: 'target-uuid',
+            uuid: 'edge-uuid-4',
+            score: 0.9,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        nodes: [
+          {
+            name: 'test node',
+            summary: 'Test node summary',
+            uuid: 'node-uuid-1',
+            score: 0.8,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        episodes: [{ content: 'test episode', score: 0.7, createdAt: '2024-01-01T00:00:00Z', uuid: 'episode-uuid-4' }],
       };
 
       mockZepService.graph.search.mockResolvedValue(mockResults);
