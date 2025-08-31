@@ -102,6 +102,56 @@ export class MemoryToolsService {
   }
 
   /**
+   * Search knowledge in project group graph
+   */
+  async searchProjectGroup(
+    query: string,
+    projectName?: string,
+    scope: 'edges' | 'nodes' | 'episodes' = 'episodes',
+    limit = 10,
+    reranker: Reranker = 'cross_encoder',
+  ): Promise<MemorySearchResult[]> {
+    try {
+      if (!query || typeof query !== 'string' || query.trim().length === 0) {
+        throw new Error('Query is required and cannot be empty');
+      }
+
+      const projectContext = await detectProject();
+      if (!projectContext) {
+        throw new Error("No project context available. Make sure you're in a project directory.");
+      }
+
+      if (projectName && (typeof projectName !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(projectName))) {
+        throw new Error('Invalid project name. Must contain only letters, numbers, hyphens, and underscores.');
+      }
+
+      const targetGraphId = projectName ? `project-${projectName}` : projectContext.groupId;
+
+      const searchResults = await this.performMemorySearch(
+        query.trim(),
+        scope,
+        limit,
+        reranker,
+        undefined, // no project filter for direct project search
+        targetGraphId, // use graphId instead of userId
+      );
+
+      return this.processSearchResults(searchResults, scope).map((result) => ({
+        ...result,
+        metadata: {
+          ...result.metadata,
+          scope: `project_${scope}`, // Mark as project search
+          graphId: targetGraphId,
+          projectName: projectName || projectContext.projectName,
+        },
+      }));
+    } catch (error) {
+      console.error('❌ Error searching project group:', error);
+      return [];
+    }
+  }
+
+  /**
    * Add content to project group graph
    */
   private async addToProjectGroup(graphId: string, content: string, metadata?: Record<string, unknown>): Promise<void> {
@@ -209,16 +259,32 @@ export class MemoryToolsService {
     limit: number,
     reranker?: Reranker,
     projectFilter?: string,
+    graphId?: string,
   ) {
     const enhancedQuery = projectFilter ? `${query} ${projectFilter}` : query;
 
-    return await this.zepService.graph.search({
-      userId: this.zepService.userId,
+    const searchParams: {
+      query: string;
+      scope: 'edges' | 'nodes' | 'episodes';
+      limit: number;
+      reranker?: string;
+      userId?: string;
+      graphId?: string;
+    } = {
       query: enhancedQuery,
       scope: scope as 'edges' | 'nodes' | 'episodes',
       limit,
       reranker: reranker === 'none' ? undefined : reranker,
-    });
+    };
+
+    // Use graphId for project searches, userId for personal searches
+    if (graphId) {
+      searchParams.graphId = graphId;
+    } else {
+      searchParams.userId = this.zepService.userId;
+    }
+
+    return await this.zepService.graph.search(searchParams as any);
   }
 
   private processSearchResults(searchResults: unknown, scope: string, projectFilter?: string): MemorySearchResult[] {

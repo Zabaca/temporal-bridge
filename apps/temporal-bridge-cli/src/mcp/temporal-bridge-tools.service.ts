@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
-import { MemoryToolsService, ProjectEntitiesService } from '../lib';
+import { MemoryToolsService, ProjectEntitiesService, ZepService } from '../lib';
 
 @Injectable()
 export class TemporalBridgeToolsService {
   constructor(
     private readonly memoryTools: MemoryToolsService,
     private readonly projectEntities: ProjectEntitiesService,
+    private readonly zepService: ZepService,
   ) {}
 
   @Tool({
@@ -53,15 +54,38 @@ export class TemporalBridgeToolsService {
         .describe('Reranker type for better accuracy'),
     }),
   })
-  searchProject(input: { query: string; project?: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
-    // TODO: Implement project-specific search when project groups are set up
-    return {
-      source: 'project',
-      query: input.query,
-      project: input.project || 'current',
-      results: [],
-      message: 'Project search functionality will be implemented with project groups',
-    };
+  async searchProject(input: { query: string; project?: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
+    try {
+      const results = await this.memoryTools.searchProjectGroup(
+        input.query,
+        input.project,
+        'episodes', // Default to episodes for better results
+        input.limit || 5,
+        input.reranker || 'cross_encoder',
+      );
+
+      return {
+        source: 'project',
+        query: input.query,
+        project: input.project || 'current',
+        results: results ? results.map((r) => ({
+          content: r.content,
+          score: r.score,
+          timestamp: r.created_at,
+          type: r.type,
+          metadata: r.metadata,
+        })) : [],
+      };
+    } catch (error) {
+      console.error('❌ Error searching project:', error);
+      return {
+        source: 'project',
+        query: input.query,
+        project: input.project || 'current',
+        results: [],
+        error: `Failed to search project: ${(error as Error).message}`,
+      };
+    }
   }
 
   @Tool({
@@ -285,14 +309,36 @@ export class TemporalBridgeToolsService {
       min_rating: z.number().optional().describe('Minimum fact confidence rating 0-1'),
     }),
   })
-  getThreadContext(input: { thread_id: string; min_rating?: number }) {
-    // TODO: Implement thread context retrieval when Zep thread API is integrated
-    return {
-      thread_id: input.thread_id,
-      context_summary: 'Thread context functionality will be implemented with Zep thread integration',
-      facts: [],
-      user_id: 'developer',
-      message: 'Thread context retrieval not yet implemented',
-    };
+  async getThreadContext(input: { thread_id: string; min_rating?: number }) {
+    try {
+      // Ensure user and thread exist in Zep
+      await this.zepService.ensureUser();
+      await this.zepService.ensureThread(input.thread_id);
+
+      // Get Zep's intelligent context block for this thread
+      // Use mode: "basic" to get structured FACTS and ENTITIES format
+      const threadContext = await this.zepService.thread.getUserContext(input.thread_id, {
+        mode: 'basic' // Get structured FACTS/ENTITIES format, not summary
+      });
+
+      // The context block contains structured FACTS and ENTITIES
+      const contextBlock = threadContext.context || 'No context available for this thread';
+
+      return {
+        thread_id: input.thread_id,
+        context_block: contextBlock, // Full structured context with FACTS/ENTITIES/EPISODES
+        user_id: this.zepService.userId,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Error getting thread context:', error);
+      return {
+        thread_id: input.thread_id,
+        context_block: 'Error retrieving thread context',
+        user_id: this.zepService.userId,
+        error: (error as Error).message,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 }

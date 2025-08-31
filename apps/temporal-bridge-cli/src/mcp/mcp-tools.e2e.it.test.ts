@@ -128,20 +128,19 @@ describe('MCP Tools Integration Test', () => {
   });
 
   describe('search_project Tool', () => {
-    it('should return placeholder response for project search', async () => {
+    it('should search project groups and return results', async () => {
       const result = await temporalBridgeToolsService.searchProject({
         query: 'project architecture',
         project: 'temporal-bridge',
         limit: 5,
       });
 
-      // Since project search is not yet implemented, it should return a placeholder
+      // Project search now works but returns empty results for mock data
       expect(result).toEqual({
         source: 'project',
         query: 'project architecture',
         project: 'temporal-bridge',
         results: [],
-        message: 'Project search functionality will be implemented with project groups',
       });
     });
   });
