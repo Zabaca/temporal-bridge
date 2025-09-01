@@ -1,3 +1,13 @@
+---
+entity_type: ArchitectureDecision
+decision_title: "Use Zep's automatic entity classification for documentation knowledge graph"
+status: accepted
+decision_date: 2025-09-01
+impact_scope: system-wide
+alternatives_considered: "Manual metadata extraction, Custom entity extraction pipeline, Hybrid approach"
+document_purpose: Decision record for entity classification approach in knowledge graph system
+---
+
 # ADR-001: Use Zep's Automatic Entity Classification for Documentation Knowledge Graph
 
 ## Status

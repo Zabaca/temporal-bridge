@@ -29,7 +29,7 @@ Shows TemporalBridge in its broader ecosystem:
 ### Level 2: Containers
 **File**: `c4-level2-container.puml`
 
-Shows the main technical components:
+Shows the main technical containers:
 - **CLI Application** (Node.js/NestJS) - Direct command-line interface
 - **MCP Server** (Node.js/NestJS) - Provides 11 memory tools to Claude Code
 - **Hook System** - Automatically captures conversations

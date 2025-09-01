@@ -31,10 +31,6 @@ export const ArchitectureSchema: EntityType = {
       'Type of architectural component: service, database, api, library, frontend, backend, infrastructure',
     ),
     c4_layer: entityFields.text('C4 architecture layer: context, container, component, code'),
-    technology_stack: entityFields.text(
-      'Primary technologies used: TypeScript, Node.js, React, PostgreSQL, Redis, etc',
-    ),
-    deployment_model: entityFields.text("How it's deployed: docker, serverless, vm, kubernetes, cloud-service"),
     status: entityFields.text('Current status: active, deprecated, planned, experimental, legacy'),
   },
 };

@@ -1,16 +1,10 @@
 ---
 entity_type: ArchitectureDecision
-decision_status: accepted
+decision_title: "Use specialized MCP tools for comprehensive knowledge graph queries"
+status: accepted
 decision_date: 2025-09-01
-decision_topic: MCP tool architecture for comprehensive knowledge graph queries
-affected_systems:
-  - TemporalBridge MCP Server
-  - Claude Code Integration
-  - Knowledge Graph Query System
-technology_stack: MCP Protocol, @rekog/mcp-nest, TypeScript, Zep SDK
-implementation_complexity: medium
-impact_scope: system
-alternatives_considered: 3
+impact_scope: system-wide
+alternatives_considered: "Single generic search tool, Manual query building approach, Hybrid search with progressive disclosure"
 document_purpose: Decision record for specialized MCP tools vs generic search approach
 ---
 

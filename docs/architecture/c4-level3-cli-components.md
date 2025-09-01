@@ -2,8 +2,6 @@
 entity_type: Architecture
 component_type: container
 c4_layer: component
-technology_stack: Node.js, NestJS, nest-commander, @rekog/mcp-nest, TypeScript
-deployment_model: docker
 status: active
 document_purpose: Component breakdown of CLI container internal structure
 components:
