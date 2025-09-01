@@ -682,4 +682,355 @@ export class TemporalBridgeToolsService {
       };
     }
   }
+
+  @Tool({
+    name: 'search_graph_nodes',
+    description: 'Search knowledge graph entity nodes for summaries and attributes',
+    parameters: z.object({
+      query: z.string().describe('Search query for entity nodes'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(10).describe('Maximum number of results to return'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
+    }),
+  })
+  async searchGraphNodes(input: {
+    query: string;
+    project?: string;
+    limit?: number;
+    reranker?: 'cross_encoder' | 'none';
+  }) {
+    try {
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+
+      if (!graphId) {
+        throw new Error('No project context available for graph search');
+      }
+
+      const results = await this.memoryTools.searchGraphNodes(
+        input.query,
+        input.limit || 10,
+        input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
+        graphId
+      );
+
+      return {
+        success: true,
+        search_type: 'nodes',
+        query: input.query,
+        project: input.project || 'current',
+        graph_id: graphId,
+        entities: results.map((r) => ({
+          name: r.content.split('\n')[0] || 'Unknown Entity',
+          summary: r.content,
+          score: r.score,
+          timestamp: r.created_at,
+          metadata: r.metadata,
+        })),
+        count: results.length,
+      };
+    } catch (error) {
+      console.error('❌ Error searching graph nodes:', error);
+      return {
+        success: false,
+        search_type: 'nodes',
+        query: input.query,
+        project: input.project || 'current',
+        error: `Failed to search graph nodes: ${(error as Error).message}`,
+        entities: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'search_graph_edges',
+    description: 'Search knowledge graph edges for relationships and facts',
+    parameters: z.object({
+      query: z.string().describe('Search query for relationship facts'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      edge_types: z
+        .array(z.string())
+        .optional()
+        .describe('Filter by specific edge types (e.g., IMPLEMENTS, SUPERSEDES, DEPENDS_ON)'),
+      limit: z.number().optional().default(10).describe('Maximum number of results to return'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
+    }),
+  })
+  async searchGraphEdges(input: {
+    query: string;
+    project?: string;
+    edge_types?: string[];
+    limit?: number;
+    reranker?: 'cross_encoder' | 'none';
+  }) {
+    try {
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+
+      if (!graphId) {
+        throw new Error('No project context available for graph search');
+      }
+
+      const results = await this.memoryTools.searchGraphEdges(
+        input.query,
+        input.limit || 10,
+        input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
+        graphId,
+        input.edge_types
+      );
+
+      return {
+        success: true,
+        search_type: 'edges',
+        query: input.query,
+        project: input.project || 'current',
+        graph_id: graphId,
+        edge_types_filter: input.edge_types || [],
+        relationships: results.map((r) => ({
+          fact: r.content,
+          score: r.score,
+          timestamp: r.created_at,
+          metadata: r.metadata,
+        })),
+        count: results.length,
+      };
+    } catch (error) {
+      console.error('❌ Error searching graph edges:', error);
+      return {
+        success: false,
+        search_type: 'edges',
+        query: input.query,
+        project: input.project || 'current',
+        error: `Failed to search graph edges: ${(error as Error).message}`,
+        relationships: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'get_entity_episodes',
+    description: 'Find source episodes that created or mentioned a specific entity',
+    parameters: z.object({
+      entity_query: z.string().describe('Search query to identify the entity (e.g., component name, concept)'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(5).describe('Maximum number of episodes to return'),
+    }),
+  })
+  async getEntityEpisodes(input: { entity_query: string; project?: string; limit?: number }) {
+    try {
+      // First search for nodes to identify relevant entities
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+
+      if (!graphId) {
+        throw new Error('No project context available for entity lookup');
+      }
+
+      // Search episodes that mention this entity
+      const episodeResults = await this.memoryTools.searchProjectGroup(
+        `${input.entity_query} entity mentions source documentation`,
+        input.project,
+        'episodes',
+        input.limit || 5,
+        Zep.Reranker.CrossEncoder
+      );
+
+      return {
+        success: true,
+        entity_query: input.entity_query,
+        project: input.project || 'current',
+        graph_id: graphId,
+        source_episodes: episodeResults
+          ? episodeResults.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: episodeResults?.length || 0,
+        note: 'Episodes that likely contributed to creating or mentioning this entity',
+      };
+    } catch (error) {
+      console.error('❌ Error finding entity episodes:', error);
+      return {
+        success: false,
+        entity_query: input.entity_query,
+        project: input.project || 'current',
+        error: `Failed to find entity episodes: ${(error as Error).message}`,
+        source_episodes: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'get_episode_mentions',
+    description: 'Get entities and relationships that were extracted from a specific episode',
+    parameters: z.object({
+      episode_query: z.string().describe('Query to identify the episode (e.g., filename, topic, timestamp)'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(10).describe('Maximum number of mentions to return'),
+    }),
+  })
+  async getEpisodeMentions(input: { episode_query: string; project?: string; limit?: number }) {
+    try {
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+
+      if (!graphId) {
+        throw new Error('No project context available for episode lookup');
+      }
+
+      // Search for related entities and relationships mentioned in this episode
+      const entityResults = await this.memoryTools.searchGraphNodes(
+        `${input.episode_query} mentions entities`,
+        Math.ceil((input.limit || 10) / 2),
+        Zep.Reranker.CrossEncoder,
+        graphId
+      );
+
+      const relationshipResults = await this.memoryTools.searchGraphEdges(
+        `${input.episode_query} relationships facts`,
+        Math.ceil((input.limit || 10) / 2),
+        Zep.Reranker.CrossEncoder,
+        graphId
+      );
+
+      return {
+        success: true,
+        episode_query: input.episode_query,
+        project: input.project || 'current',
+        graph_id: graphId,
+        extracted_entities: entityResults.map((r) => ({
+          entity: r.content.split('\n')[0] || 'Unknown Entity',
+          summary: r.content,
+          score: r.score,
+          metadata: r.metadata,
+        })),
+        extracted_relationships: relationshipResults.map((r) => ({
+          fact: r.content,
+          score: r.score,
+          metadata: r.metadata,
+        })),
+        entities_count: entityResults.length,
+        relationships_count: relationshipResults.length,
+        total_mentions: entityResults.length + relationshipResults.length,
+      };
+    } catch (error) {
+      console.error('❌ Error finding episode mentions:', error);
+      return {
+        success: false,
+        episode_query: input.episode_query,
+        project: input.project || 'current',
+        error: `Failed to find episode mentions: ${(error as Error).message}`,
+        extracted_entities: [],
+        extracted_relationships: [],
+        entities_count: 0,
+        relationships_count: 0,
+        total_mentions: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'search_with_filters',
+    description: 'Advanced search with filters for specific relationship types and scopes',
+    parameters: z.object({
+      query: z.string().describe('Search query'),
+      scope: z.enum(['nodes', 'edges', 'episodes']).describe('Search scope: nodes (entities), edges (relationships), or episodes (documents)'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      edge_types: z
+        .array(z.string())
+        .optional()
+        .describe('Filter by edge types: IMPLEMENTS, SUPERSEDES, DEPENDS_ON, USES_DATA_MODEL, AFFECTED_BY, DOCUMENTS'),
+      limit: z.number().optional().default(10).describe('Maximum number of results to return'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
+    }),
+  })
+  async searchWithFilters(input: {
+    query: string;
+    scope: 'nodes' | 'edges' | 'episodes';
+    project?: string;
+    edge_types?: string[];
+    limit?: number;
+    reranker?: 'cross_encoder' | 'none';
+  }) {
+    try {
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+
+      let results: any[] = [];
+
+      if (input.scope === 'nodes') {
+        results = await this.memoryTools.searchGraphNodes(
+          input.query,
+          input.limit || 10,
+          input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
+          graphId
+        );
+      } else if (input.scope === 'edges') {
+        results = await this.memoryTools.searchGraphEdges(
+          input.query,
+          input.limit || 10,
+          input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
+          graphId,
+          input.edge_types
+        );
+      } else {
+        // episodes scope
+        results = await this.memoryTools.searchProjectGroup(
+          input.query,
+          input.project,
+          'episodes',
+          input.limit || 10,
+          input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder
+        );
+      }
+
+      return {
+        success: true,
+        query: input.query,
+        scope: input.scope,
+        project: input.project || 'current',
+        graph_id: graphId || 'N/A',
+        filters: {
+          edge_types: input.edge_types || [],
+        },
+        results: results.map((r) => ({
+          content: r.content,
+          score: r.score,
+          type: r.type,
+          timestamp: r.created_at,
+          metadata: r.metadata,
+        })),
+        count: results.length,
+      };
+    } catch (error) {
+      console.error('❌ Error in advanced search with filters:', error);
+      return {
+        success: false,
+        query: input.query,
+        scope: input.scope,
+        project: input.project || 'current',
+        error: `Failed to search with filters: ${(error as Error).message}`,
+        results: [],
+        count: 0,
+      };
+    }
+  }
 }

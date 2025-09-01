@@ -292,6 +292,92 @@ export class MemoryToolsService {
     }
   }
 
+  /**
+   * Search knowledge graph nodes (entities with summaries)
+   */
+  async searchGraphNodes(
+    query: string,
+    limit = 10,
+    reranker?: Zep.Reranker | 'none',
+    graphId?: string
+  ): Promise<MemorySearchResult[]> {
+    try {
+      const searchResults = await this.performMemorySearch(
+        query, 
+        Zep.GraphSearchScope.Nodes, 
+        limit, 
+        reranker, 
+        undefined, 
+        graphId
+      );
+      return this.processSearchResults(searchResults, 'nodes');
+    } catch (error) {
+      console.error('Search graph nodes error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Search knowledge graph edges (relationships with facts)
+   */
+  async searchGraphEdges(
+    query: string,
+    limit = 10,
+    reranker?: Zep.Reranker | 'none',
+    graphId?: string,
+    edgeTypes?: string[]
+  ): Promise<MemorySearchResult[]> {
+    try {
+      const searchResults = await this.performMemorySearchWithFilters(
+        query,
+        Zep.GraphSearchScope.Edges,
+        limit,
+        reranker,
+        graphId,
+        edgeTypes
+      );
+      return this.processSearchResults(searchResults, 'edges');
+    } catch (error) {
+      console.error('Search graph edges error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Advanced search with filters for edge types
+   */
+  private async performMemorySearchWithFilters(
+    query: string,
+    scope: Zep.GraphSearchScope,
+    limit: number,
+    reranker?: Zep.Reranker | 'none',
+    graphId?: string,
+    edgeTypes?: string[]
+  ) {
+    const searchParams: Zep.GraphSearchQuery = {
+      query,
+      scope,
+      limit,
+      reranker: reranker === 'none' ? undefined : reranker,
+    };
+
+    // Add search filters for edge types
+    if (edgeTypes && edgeTypes.length > 0) {
+      searchParams.searchFilters = {
+        edgeTypes
+      };
+    }
+
+    // Use graphId for project searches, userId for personal searches
+    if (graphId) {
+      searchParams.graphId = graphId;
+    } else {
+      searchParams.userId = this.zepService.userId;
+    }
+
+    return await this.zepService.graph.search(searchParams);
+  }
+
   private async performMemorySearch(
     query: string,
     scope: Zep.GraphSearchScope,
