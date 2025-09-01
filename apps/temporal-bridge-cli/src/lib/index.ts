@@ -9,6 +9,12 @@ export {
   // Memory search
   MemoryToolsService,
 } from './memory-tools';
+// Documentation ontology
+export * from './doc-ontology.service';
+export {
+  // Documentation ontology service
+  DocumentationOntologyService,
+} from './doc-ontology.service';
 export * from './project-detector';
 export {
   // Project detection

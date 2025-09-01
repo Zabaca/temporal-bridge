@@ -1,3 +1,19 @@
+---
+entity_type: Architecture
+component_type: system
+c4_layer: container
+technology_stack: Node.js, NestJS, TypeScript, Zep Cloud API, MCP Protocol
+deployment_model: docker
+status: active
+document_purpose: Container architecture and internal components
+components:
+  - TemporalBridge CLI
+  - MCP Server
+  - Claude Code Hook
+  - Session Cache
+  - Configuration
+---
+
 ```mermaid
 ---
 title: "C4 Level 2: Container - TemporalBridge System"

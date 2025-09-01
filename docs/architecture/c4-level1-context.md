@@ -1,3 +1,20 @@
+---
+entity_type: Architecture
+component_type: system
+c4_layer: context
+technology_stack: Node.js, TypeScript, Zep Cloud API, Claude Code
+deployment_model: cloud-service
+status: active
+document_purpose: System context and external integrations
+components:
+  - TemporalBridge
+  - Claude Code
+  - Zep Cloud API
+  - Git Repositories
+  - Local File System
+  - Project Teams
+---
+
 ```mermaid
 ---
 title: "C4 Level 1: System Context - TemporalBridge"

@@ -6,7 +6,7 @@ export default defineConfig({
     environment: 'node',
 
     // Test file patterns
-    include: ['**/*.test.ts', '**/*.it.test.ts', '**/*.e2e.it.test.ts'],
+    include: ['**/*.test.ts', '**/*.it.test.ts', '**/*.e2e.it.test.ts', '**/*.e2e.test.ts'],
 
     // Setup files
     setupFiles: ['./src/test/setup.ts'],

@@ -6,6 +6,7 @@
 import { Zep } from '@getzep/zep-cloud';
 import { Injectable } from '@nestjs/common';
 import { detectProject } from './project-detector';
+import { DocumentationOntologyService } from './doc-ontology.service';
 import { ProjectEntitiesService } from './project-entities';
 import type { UnifiedMemoryQuery, UnifiedMemoryResult } from './types';
 import { ZepError, ZepService } from './zep-client';
@@ -42,6 +43,7 @@ export class MemoryToolsService {
   constructor(
     private readonly zepService: ZepService,
     private readonly projectEntitiesService: ProjectEntitiesService,
+    private readonly docOntologyService: DocumentationOntologyService,
   ) {}
 
   /**
@@ -174,6 +176,8 @@ export class MemoryToolsService {
         query: 'test',
         limit: 1,
       });
+      // Graph exists, check if ontology is set
+      await this.ensureDocumentationOntology(graphId);
     } catch (error) {
       // If 404 or similar, group doesn't exist, create it
       const zepError = error as ZepError;
@@ -185,6 +189,9 @@ export class MemoryToolsService {
             description: `Project knowledge graph for ${projectName} created by temporal-bridge`,
           });
           console.log(`✅ Created project group: ${graphId}`);
+          
+          // Set up documentation ontology for new project groups
+          await this.ensureDocumentationOntology(graphId);
         } catch (createError) {
           const createZepError = createError as ZepError;
           if (!createZepError.message?.includes('already exists')) {
@@ -194,6 +201,31 @@ export class MemoryToolsService {
       } else {
         throw error;
       }
+    }
+  }
+
+  /**
+   * Ensure documentation ontology is set up for project groups
+   * This enables automatic entity classification for documentation
+   */
+  private async ensureDocumentationOntology(graphId: string): Promise<void> {
+    try {
+      // Check if ontology is already properly configured
+      const validation = await this.docOntologyService.validateOntologySetup(graphId);
+      
+      if (!validation.valid) {
+        console.log(`🔧 Setting up documentation ontology for ${graphId}...`);
+        const result = await this.docOntologyService.setDocumentationOntology(graphId);
+        
+        if (result.success) {
+          console.log(`✅ Documentation ontology configured: ${result.entityTypesSet} entities, ${result.edgeTypesSet} edges`);
+        } else {
+          console.warn(`⚠️  Failed to set ontology: ${result.error}`);
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️  Could not ensure documentation ontology: ${(error as Error).message}`);
+      // Don't throw - ontology setup is optional, graph should still work
     }
   }
 

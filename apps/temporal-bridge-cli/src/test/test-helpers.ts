@@ -35,6 +35,11 @@ export const TEST_PROJECT_PATH = '/home/test/Projects/temporal-bridge';
 // Environment setup for tests
 export function setupTestEnvironment() {
   process.env.NODE_ENV = 'test';
-  process.env.ZEP_API_KEY = 'test-zep-api-key';
-  process.env.DEVELOPER_ID = TEST_DEVELOPER_ID;
+  // Only set test API key if no real API key is provided (for unit tests)
+  if (!process.env.ZEP_API_KEY || process.env.ZEP_API_KEY.length < 50) {
+    process.env.ZEP_API_KEY = 'test-zep-api-key';
+  }
+  if (!process.env.DEVELOPER_ID) {
+    process.env.DEVELOPER_ID = TEST_DEVELOPER_ID;
+  }
 }

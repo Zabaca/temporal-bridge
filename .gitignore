@@ -1,6 +1,7 @@
 # Environment files
 .env
 .env.local
+test.env
 
 # Debug files
 *debug*.json

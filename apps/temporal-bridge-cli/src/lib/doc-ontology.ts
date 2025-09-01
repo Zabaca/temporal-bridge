@@ -81,7 +81,9 @@ export const ArchitectureDecisionSchema: EntityType = {
  */
 export const DocumentsSchema: EdgeType = {
   description: 'Architectural component or data model is documented by technical documentation',
-  fields: {},
+  fields: {
+    documentation_type: entityFields.text('Type of documentation: readme, wiki, inline, api, design'),
+  },
   sourceTargets: [
     { source: 'Architecture', target: 'Documentation' },
     { source: 'DataModel', target: 'Documentation' },
@@ -94,7 +96,9 @@ export const DocumentsSchema: EdgeType = {
  */
 export const ImplementsSchema: EdgeType = {
   description: 'Architectural component implements an architecture decision or requirement',
-  fields: {},
+  fields: {
+    implementation_status: entityFields.text('Implementation status: complete, partial, planned, deprecated'),
+  },
   sourceTargets: [
     { source: 'Architecture', target: 'ArchitectureDecision' },
     { source: 'Architecture', target: 'Requirement' },
@@ -107,7 +111,9 @@ export const ImplementsSchema: EdgeType = {
  */
 export const SupersedesSchema: EdgeType = {
   description: 'Newer documentation, decision, or component supersedes an older version',
-  fields: {},
+  fields: {
+    supersession_date: entityFields.text('Date when the newer version replaced the older one'),
+  },
   sourceTargets: [
     { source: 'Architecture', target: 'Architecture' },
     { source: 'DataModel', target: 'DataModel' },
@@ -121,7 +127,9 @@ export const SupersedesSchema: EdgeType = {
  */
 export const DependsOnSchema: EdgeType = {
   description: 'Architectural component has a dependency on another component',
-  fields: {},
+  fields: {
+    dependency_type: entityFields.text('Type of dependency: runtime, build, dev, optional'),
+  },
   sourceTargets: [{ source: 'Architecture', target: 'Architecture' }],
 };
 
@@ -131,7 +139,9 @@ export const DependsOnSchema: EdgeType = {
  */
 export const UsesDataModelSchema: EdgeType = {
   description: 'Architectural component uses or manipulates a specific data model',
-  fields: {},
+  fields: {
+    usage_type: entityFields.text('How the data model is used: read, write, create, delete, transform'),
+  },
   sourceTargets: [{ source: 'Architecture', target: 'DataModel' }],
 };
 
@@ -141,7 +151,9 @@ export const UsesDataModelSchema: EdgeType = {
  */
 export const AffectedBySchema: EdgeType = {
   description: 'Component or data model is affected by an architectural decision',
-  fields: {},
+  fields: {
+    impact_level: entityFields.text('Level of impact: high, medium, low'),
+  },
   sourceTargets: [
     { source: 'Architecture', target: 'ArchitectureDecision' },
     { source: 'DataModel', target: 'ArchitectureDecision' },
@@ -165,14 +177,15 @@ export const DocumentationEntityTypes = {
 /**
  * Complete edge type definitions for documentation relationships
  * 6 edge types covering key relationships between documentation entities
+ * Note: Edge names must be in SCREAMING_SNAKE_CASE per Zep requirements
  */
 export const DocumentationEdgeTypes = {
-  Documents: DocumentsSchema,
-  Implements: ImplementsSchema,
-  Supersedes: SupersedesSchema,
-  DependsOn: DependsOnSchema,
-  UsesDataModel: UsesDataModelSchema,
-  AffectedBy: AffectedBySchema,
+  DOCUMENTS: DocumentsSchema,
+  IMPLEMENTS: ImplementsSchema,
+  SUPERSEDES: SupersedesSchema,
+  DEPENDS_ON: DependsOnSchema,
+  USES_DATA_MODEL: UsesDataModelSchema,
+  AFFECTED_BY: AffectedBySchema,
 } as const;
 
 /**

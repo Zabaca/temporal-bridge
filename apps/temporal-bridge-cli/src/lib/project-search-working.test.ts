@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
+import { DocumentationOntologyService } from './doc-ontology.service';
 import { MemoryToolsService } from './memory-tools';
 import * as projectDetector from './project-detector';
 import { ProjectEntitiesService } from './project-entities';
@@ -14,6 +15,7 @@ describe('Project Search Fix Verification', () => {
   let memoryToolsService: MemoryToolsService;
   let mockZepService: ReturnType<typeof mockDeep<ZepService>>;
   let mockProjectEntitiesService: ReturnType<typeof mockDeep<ProjectEntitiesService>>;
+  let mockDocOntologyService: ReturnType<typeof mockDeep<DocumentationOntologyService>>;
 
   beforeEach(() => {
     mockZepService = mockDeep<ZepService>();
@@ -38,7 +40,9 @@ describe('Project Search Fix Verification', () => {
       projectType: 'directory' as const,
     });
 
-    memoryToolsService = new MemoryToolsService(mockZepService, mockProjectEntitiesService);
+    mockDocOntologyService = mockDeep<DocumentationOntologyService>();
+    
+    memoryToolsService = new MemoryToolsService(mockZepService, mockProjectEntitiesService, mockDocOntologyService);
   });
 
   describe('searchProjectGroup Fix Verification', () => {

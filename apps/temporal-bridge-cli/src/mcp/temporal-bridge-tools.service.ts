@@ -363,4 +363,323 @@ export class TemporalBridgeToolsService {
       throw new Error(`Failed to list entity types: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  @Tool({
+    name: 'ingest_documentation',
+    description: 'Ingest documentation files into the knowledge graph for automatic entity extraction',
+    parameters: z.object({
+      file_path: z.string().describe('Path to the documentation file to ingest'),
+      content: z.string().describe('Content of the documentation file (with frontmatter)'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+    }),
+  })
+  async ingestDocumentation(input: { file_path: string; content: string; project?: string }) {
+    try {
+      // Validate inputs
+      if (!(input.file_path && input.content)) {
+        throw new Error('Both file_path and content are required');
+      }
+
+      if (input.content.length > 10000) {
+        throw new Error('Document content is too large (max 10,000 characters). Consider chunking large documents.');
+      }
+
+      // Use existing shareToProjectGroup infrastructure but for documentation
+      const result = await this.memoryTools.shareToProjectGroup(
+        `[DOCUMENTATION] ${input.file_path}\n\n${input.content}`,
+        input.project,
+      );
+
+      return {
+        success: result.success,
+        message: `✅ Documentation ingested successfully\n📄 File: ${input.file_path}\n🤖 Zep will automatically extract entities based on the custom ontology\n🔗 Graph ID: ${result.graphId}`,
+        file_path: input.file_path,
+        graph_id: result.graphId,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Error ingesting documentation:', error);
+      return {
+        success: false,
+        error: `Failed to ingest documentation: ${(error as Error).message}`,
+        file_path: input.file_path,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  @Tool({
+    name: 'find_component_docs',
+    description: 'Find all documentation for a specific architectural component',
+    parameters: z.object({
+      component_name: z.string().describe('Name of the component to find documentation for'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(10).describe('Maximum number of results to return'),
+    }),
+  })
+  async findComponentDocs(input: { component_name: string; project?: string; limit?: number }) {
+    try {
+      const searchQuery = `Architecture component ${input.component_name} documentation implementation`;
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        input.limit || 10,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        component: input.component_name,
+        project: input.project || 'current',
+        documentation: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error finding component documentation:', error);
+      return {
+        success: false,
+        component: input.component_name,
+        project: input.project || 'current',
+        error: `Failed to find component documentation: ${(error as Error).message}`,
+        documentation: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'get_architecture_overview',
+    description: 'Get high-level architecture overview and system design documentation',
+    parameters: z.object({
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      c4_layer: z.enum(['context', 'container', 'component', 'code']).optional().describe('Specific C4 layer to focus on'),
+    }),
+  })
+  async getArchitectureOverview(input: { project?: string; c4_layer?: 'context' | 'container' | 'component' | 'code' }) {
+    try {
+      const layerQuery = input.c4_layer ? `C4 ${input.c4_layer} layer` : 'architecture overview system design';
+      const searchQuery = `${layerQuery} TemporalBridge architecture system context`;
+      
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        10,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        project: input.project || 'current',
+        c4_layer: input.c4_layer || 'all',
+        overview: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error getting architecture overview:', error);
+      return {
+        success: false,
+        project: input.project || 'current',
+        c4_layer: input.c4_layer || 'all',
+        error: `Failed to get architecture overview: ${(error as Error).message}`,
+        overview: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'find_architecture_decisions',
+    description: 'Find Architecture Decision Records (ADRs) and related implementation details',
+    parameters: z.object({
+      decision_topic: z.string().optional().describe('Specific decision topic to search for'),
+      status: z.enum(['proposed', 'accepted', 'deprecated', 'superseded']).optional().describe('Filter by decision status'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(5).describe('Maximum number of results to return'),
+    }),
+  })
+  async findArchitectureDecisions(input: {
+    decision_topic?: string;
+    status?: 'proposed' | 'accepted' | 'deprecated' | 'superseded';
+    project?: string;
+    limit?: number;
+  }) {
+    try {
+      const topicQuery = input.decision_topic || 'architecture decision';
+      const statusFilter = input.status ? `status ${input.status}` : '';
+      const searchQuery = `ArchitectureDecision ADR ${topicQuery} ${statusFilter} architectural choice`.trim();
+
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        input.limit || 5,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        decision_topic: input.decision_topic || 'all',
+        status: input.status || 'any',
+        project: input.project || 'current',
+        decisions: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error finding architecture decisions:', error);
+      return {
+        success: false,
+        decision_topic: input.decision_topic || 'all',
+        status: input.status || 'any',
+        project: input.project || 'current',
+        error: `Failed to find architecture decisions: ${(error as Error).message}`,
+        decisions: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'search_data_models',
+    description: 'Search for data model definitions, schemas, and related documentation',
+    parameters: z.object({
+      model_name: z.string().optional().describe('Specific data model name to search for'),
+      storage_layer: z.enum(['postgres', 'redis', 'zep', 'memory', 'file', 'api']).optional().describe('Filter by storage layer'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(5).describe('Maximum number of results to return'),
+    }),
+  })
+  async searchDataModels(input: {
+    model_name?: string;
+    storage_layer?: 'postgres' | 'redis' | 'zep' | 'memory' | 'file' | 'api';
+    project?: string;
+    limit?: number;
+  }) {
+    try {
+      const modelQuery = input.model_name || 'DataModel';
+      const storageFilter = input.storage_layer ? `${input.storage_layer} storage` : '';
+      const searchQuery = `${modelQuery} schema definition interface ${storageFilter} data structure`.trim();
+
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        input.limit || 5,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        model_name: input.model_name || 'all',
+        storage_layer: input.storage_layer || 'any',
+        project: input.project || 'current',
+        models: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error searching data models:', error);
+      return {
+        success: false,
+        model_name: input.model_name || 'all',
+        storage_layer: input.storage_layer || 'any',
+        project: input.project || 'current',
+        error: `Failed to search data models: ${(error as Error).message}`,
+        models: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'trace_component_dependencies',
+    description: 'Trace dependencies and relationships between architectural components',
+    parameters: z.object({
+      component_name: z.string().describe('Component to trace dependencies for'),
+      direction: z.enum(['depends_on', 'depended_by', 'both']).optional().default('both').describe('Direction of dependencies to trace'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+    }),
+  })
+  async traceComponentDependencies(input: {
+    component_name: string;
+    direction?: 'depends_on' | 'depended_by' | 'both';
+    project?: string;
+  }) {
+    try {
+      let searchQuery = '';
+      switch (input.direction) {
+        case 'depends_on':
+          searchQuery = `${input.component_name} depends on dependency requires`;
+          break;
+        case 'depended_by':
+          searchQuery = `dependency ${input.component_name} used by required by`;
+          break;
+        default:
+          searchQuery = `${input.component_name} dependency relationship depends uses`;
+      }
+
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        10,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        component: input.component_name,
+        direction: input.direction || 'both',
+        project: input.project || 'current',
+        dependencies: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error tracing component dependencies:', error);
+      return {
+        success: false,
+        component: input.component_name,
+        direction: input.direction || 'both',
+        project: input.project || 'current',
+        error: `Failed to trace component dependencies: ${(error as Error).message}`,
+        dependencies: [],
+        count: 0,
+      };
+    }
+  }
 }

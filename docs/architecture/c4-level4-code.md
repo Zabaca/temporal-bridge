@@ -1,3 +1,21 @@
+---
+entity_type: Architecture
+component_type: library
+c4_layer: code
+technology_stack: TypeScript, Zep SDK, NestJS Interfaces
+deployment_model: library
+status: active
+document_purpose: Code-level implementation of memory search functionality
+data_models:
+  - UnifiedMemoryQuery
+  - UnifiedMemoryResult
+  - MemorySearchResult
+  - SearchMetadata
+services:
+  - MemoryToolsService
+  - ZepService
+---
+
 ```mermaid
 ---
 title: "C4 Level 4: Code - Memory Search Implementation"

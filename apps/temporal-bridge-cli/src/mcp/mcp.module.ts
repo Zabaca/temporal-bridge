@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { McpTransportType, McpModule as ReKogMcpModule } from '@rekog/mcp-nest';
-import { MemoryToolsService, ProjectEntitiesService, SessionManager, ZepService } from '../lib';
+import { DocumentationOntologyService, MemoryToolsService, ProjectEntitiesService, SessionManager, ZepService } from '../lib';
 import { TemporalBridgeToolsService } from './temporal-bridge-tools.service';
 
 @Module({
@@ -19,6 +19,7 @@ import { TemporalBridgeToolsService } from './temporal-bridge-tools.service';
     MemoryToolsService,
     ProjectEntitiesService,
     SessionManager,
+    DocumentationOntologyService,
 
     // MCP tools
     TemporalBridgeToolsService,
