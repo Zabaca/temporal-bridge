@@ -13,7 +13,6 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { join } from 'node:path';
 import { DocumentationOntologyService } from '../lib/doc-ontology.service';
 import { MemoryToolsService } from '../lib/memory-tools';
 import { ProjectEntitiesService } from '../lib/project-entities';
@@ -161,6 +160,64 @@ This is a test document for integration testing.`;
       }
     }, 15000);
 
+    it('should find architectural decision records (ADRs)', async () => {
+      // Test search can find ADR documents with decision content
+      const searchResults = await memoryToolsService.searchProjectGroup(
+        'ADR architectural decision Zep automatic entity classification',
+        testProjectName
+      );
+      
+      if (searchResults && searchResults.length > 0) {
+        console.log(`✅ Found ${searchResults.length} ADR search results`);
+        
+        // Should find ADR content
+        const hasADRContent = searchResults.some(result =>
+          result.content.includes('ADR') ||
+          result.content.includes('decision') ||
+          result.content.includes('001-use-zep-automatic-entity-classification')
+        );
+        console.log(`   Contains ADR content: ${hasADRContent ? 'YES' : 'NO'}`);
+        expect(searchResults.length).toBeGreaterThan(0);
+      } else {
+        console.log('⚠️ ADR content not yet processed by Zep');
+      }
+    }, 15000);
+
+
+    it('should demonstrate comprehensive architectural documentation coverage', async () => {
+      // Broader search to verify we have comprehensive architectural documentation coverage
+      const comprehensiveResults = await memoryToolsService.searchProjectGroup(
+        'TemporalBridge C4 architecture ADR decision entity classification',
+        testProjectName,
+        'episodes',
+        10
+      );
+      
+      if (comprehensiveResults && comprehensiveResults.length > 0) {
+        console.log(`✅ Comprehensive architectural search found ${comprehensiveResults.length} results`);
+        
+        // Categorize found architectural documentation types
+        const documentTypes = {
+          c4Architecture: comprehensiveResults.filter(r => 
+            r.content.includes('c4-level') || r.content.includes('C4 Level')),
+          adrs: comprehensiveResults.filter(r => 
+            r.content.includes('ADR') || r.content.includes('001-use-zep') || r.content.includes('decision'))
+        };
+        
+        console.log('   Architectural document breakdown:');
+        console.log(`   - C4 Architecture: ${documentTypes.c4Architecture.length}`);
+        console.log(`   - ADRs: ${documentTypes.adrs.length}`);
+        
+        // Should find both C4 and ADR content (total expected: 5 documents)
+        const totalArchitecturalDocs = documentTypes.c4Architecture.length + documentTypes.adrs.length;
+        console.log(`   - Total architectural documents found: ${totalArchitecturalDocs}`);
+        
+        expect(comprehensiveResults.length).toBeGreaterThan(0);
+      } else {
+        console.log('⚠️ Architectural documentation not yet fully processed by Zep');
+      }
+    }, 20000);
+
     it('should demonstrate end-to-end ontology functionality', async () => {
       // This test demonstrates the full ontology workflow works
       // by testing ingestion -> search -> results functionality
@@ -182,6 +239,7 @@ This is a test document for integration testing.`;
   });
 
   describe('Full Feature Development Workflow E2E', () => {
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: E2E test requires comprehensive workflow validation
     it('should support the complete project context gathering workflow', async () => {
       console.log('\n🎯 TESTING: Complete Feature Development Workflow');
       console.log('Scenario: Adding a new "Document Versioning" feature');

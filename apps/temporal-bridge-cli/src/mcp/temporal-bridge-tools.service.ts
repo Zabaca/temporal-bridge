@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
-import { MemoryToolsService, ProjectEntitiesService, Zep, ZepService } from '../lib';
+import { MemorySearchResult, MemoryToolsService, ProjectEntitiesService, Zep, ZepService } from '../lib';
 
 @Injectable()
 export class TemporalBridgeToolsService {
@@ -705,7 +705,7 @@ export class TemporalBridgeToolsService {
   }) {
     try {
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
 
       if (!graphId) {
         throw new Error('No project context available for graph search');
@@ -774,7 +774,7 @@ export class TemporalBridgeToolsService {
   }) {
     try {
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
 
       if (!graphId) {
         throw new Error('No project context available for graph search');
@@ -830,7 +830,7 @@ export class TemporalBridgeToolsService {
     try {
       // First search for nodes to identify relevant entities
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
 
       if (!graphId) {
         throw new Error('No project context available for entity lookup');
@@ -886,7 +886,7 @@ export class TemporalBridgeToolsService {
   async getEpisodeMentions(input: { episode_query: string; project?: string; limit?: number }) {
     try {
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
 
       if (!graphId) {
         throw new Error('No project context available for episode lookup');
@@ -972,35 +972,9 @@ export class TemporalBridgeToolsService {
   }) {
     try {
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : projectContext.project?.groupId;
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
 
-      let results: any[] = [];
-
-      if (input.scope === 'nodes') {
-        results = await this.memoryTools.searchGraphNodes(
-          input.query,
-          input.limit || 10,
-          input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
-          graphId
-        );
-      } else if (input.scope === 'edges') {
-        results = await this.memoryTools.searchGraphEdges(
-          input.query,
-          input.limit || 10,
-          input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
-          graphId,
-          input.edge_types
-        );
-      } else {
-        // episodes scope
-        results = await this.memoryTools.searchProjectGroup(
-          input.query,
-          input.project,
-          'episodes',
-          input.limit || 10,
-          input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder
-        );
-      }
+      const results = await this.performScopedSearch(input, graphId);
 
       return {
         success: true,
@@ -1022,15 +996,55 @@ export class TemporalBridgeToolsService {
       };
     } catch (error) {
       console.error('❌ Error in advanced search with filters:', error);
-      return {
-        success: false,
-        query: input.query,
-        scope: input.scope,
-        project: input.project || 'current',
-        error: `Failed to search with filters: ${(error as Error).message}`,
-        results: [],
-        count: 0,
-      };
+      return this.createErrorResponse(input, error as Error);
     }
+  }
+
+  private async performScopedSearch(
+    input: {
+      query: string;
+      scope: 'nodes' | 'edges' | 'episodes';
+      project?: string;
+      edge_types?: string[];
+      limit?: number;
+      reranker?: 'cross_encoder' | 'none';
+    },
+    graphId: string | undefined
+  ): Promise<MemorySearchResult[]> {
+    const reranker = input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder;
+    const limit = input.limit || 10;
+
+    if (input.scope === 'nodes') {
+      return await this.memoryTools.searchGraphNodes(input.query, limit, reranker, graphId);
+    }
+    
+    if (input.scope === 'edges') {
+      return await this.memoryTools.searchGraphEdges(input.query, limit, reranker, graphId, input.edge_types);
+    }
+    
+    // episodes scope
+    const episodeResults = await this.memoryTools.searchProjectGroup(
+      input.query,
+      input.project,
+      'episodes',
+      limit,
+      reranker
+    );
+    return episodeResults || [];
+  }
+
+  private createErrorResponse(
+    input: { query: string; scope: 'nodes' | 'edges' | 'episodes'; project?: string },
+    error: Error
+  ) {
+    return {
+      success: false,
+      query: input.query,
+      scope: input.scope,
+      project: input.project || 'current',
+      error: `Failed to search with filters: ${error.message}`,
+      results: [],
+      count: 0,
+    };
   }
 }
