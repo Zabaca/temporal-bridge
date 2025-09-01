@@ -5,6 +5,7 @@ import { Command, CommandRunner, Option } from 'nest-commander';
 import * as yaml from 'yaml';
 import { HookData } from '../lib/types';
 import { StoreConversationCommand } from './store-conversation.command';
+import { detectProject } from '../lib/project-detector';
 
 @Injectable()
 @Command({
@@ -100,6 +101,10 @@ export class HookCommand extends CommandRunner {
         process.exit(1);
       }
 
+      // Detect the proper project root instead of using process.cwd()
+      const projectContext = await detectProject();
+      const projectRoot = projectContext.projectPath;
+
       // Create the temporal-bridge.yaml file
       const yamlContent = {
         sessionId: sessionId,
@@ -109,7 +114,7 @@ export class HookCommand extends CommandRunner {
         },
       };
 
-      const yamlPath = path.join(process.cwd(), 'temporal-bridge.yaml');
+      const yamlPath = path.join(projectRoot, 'temporal-bridge.yaml');
       await fs.writeFile(yamlPath, yaml.stringify(yamlContent));
       console.log(`Created session metadata file: ${yamlPath}`);
     } catch (error) {
