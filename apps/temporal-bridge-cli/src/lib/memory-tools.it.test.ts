@@ -58,28 +58,40 @@ describe('MemoryToolsService Integration Test', () => {
       expect(result).toHaveLength(1);
       console.log(result[0]);
       // Test individual properties first
-      expect(result[0].fact).toBe('developer USES TypeScript');
+      expect(result[0].content).toBe('developer USES TypeScript');
       expect(result[0].score).toBe(0.95);
-      expect(result[0].source_episodes).toEqual(['episode-123']);
+      expect(result[0].metadata.source_episodes).toEqual(['episode-123']);
 
       // Now test full object equality - should work perfectly in Vitest!
       expect(result[0]).toEqual({
-        fact: 'developer USES TypeScript',
+        content: 'developer USES TypeScript',
         score: 0.95,
+        type: 'edge',
         created_at: '2024-01-01T00:00:00Z',
-        expired_at: undefined,
-        valid_at: undefined,
-        source_episodes: ['episode-123'],
+        metadata: {
+          scope: 'edges',
+          uuid: undefined,
+          valid_at: undefined,
+          expired_at: undefined,
+          source_episodes: ['episode-123'],
+        },
+        _original: expect.any(Object),
       });
 
       // Even toStrictEqual should work in Vitest (unlike Jest with proxies)
       expect(result[0]).toStrictEqual({
-        fact: 'developer USES TypeScript',
+        content: 'developer USES TypeScript',
         score: 0.95,
+        type: 'edge',
         created_at: '2024-01-01T00:00:00Z',
-        expired_at: undefined,
-        valid_at: undefined,
-        source_episodes: ['episode-123'],
+        metadata: {
+          scope: 'edges',
+          uuid: undefined,
+          valid_at: undefined,
+          expired_at: undefined,
+          source_episodes: ['episode-123'],
+        },
+        _original: expect.any(Object),
       });
 
       // Verify the correct method was called with correct parameters

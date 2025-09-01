@@ -3,37 +3,34 @@
  * Structured functions for memory search and retrieval via MCP
  */
 
+import { Zep } from '@getzep/zep-cloud';
 import { Injectable } from '@nestjs/common';
 import { detectProject } from './project-detector';
+import { DocumentationOntologyService } from './doc-ontology.service';
 import { ProjectEntitiesService } from './project-entities';
 import type { UnifiedMemoryQuery, UnifiedMemoryResult } from './types';
-import { type Reranker, ZepError, ZepService } from './zep-client';
+import { ZepError, ZepService } from './zep-client';
 
-export interface FactResult {
-  fact: string;
-  score: number;
-  created_at: string;
-  valid_at?: string;
-  expired_at?: string;
-  source_episodes: string[];
-}
-
+// Unified interface that works with SDK types but provides consistent interface
 export interface MemorySearchResult {
-  content: string;
+  content: string; // Unified field - maps to 'fact' for edges, 'summary' for nodes, 'content' for episodes
   score: number;
   type: 'edge' | 'node' | 'episode';
-  created_at?: string;
+  created_at?: string; // Normalized from SDK's 'createdAt'
   metadata: {
     scope: string;
     uuid?: string;
     processed?: boolean;
     [key: string]: unknown;
   };
+  // Include original SDK properties for direct access when needed
+  _original?: Zep.EntityEdge | Zep.EntityNode | Zep.Episode;
 }
 
+// Keep ThreadContextResult but simplify facts type
 export interface ThreadContextResult {
   context_summary: string;
-  facts: FactResult[];
+  facts: MemorySearchResult[]; // Use our unified interface
   thread_id: string;
   user_id: string;
 }
@@ -46,6 +43,7 @@ export class MemoryToolsService {
   constructor(
     private readonly zepService: ZepService,
     private readonly projectEntitiesService: ProjectEntitiesService,
+    private readonly docOntologyService: DocumentationOntologyService,
   ) {}
 
   /**
@@ -102,6 +100,56 @@ export class MemoryToolsService {
   }
 
   /**
+   * Search knowledge in project group graph
+   */
+  async searchProjectGroup(
+    query: string,
+    projectName?: string,
+    scope: Zep.GraphSearchScope = Zep.GraphSearchScope.Episodes,
+    limit = 10,
+    reranker: Zep.Reranker | 'none' = Zep.Reranker.CrossEncoder,
+  ): Promise<MemorySearchResult[]> {
+    try {
+      if (!query || typeof query !== 'string' || query.trim().length === 0) {
+        throw new Error('Query is required and cannot be empty');
+      }
+
+      const projectContext = await detectProject();
+      if (!projectContext) {
+        throw new Error("No project context available. Make sure you're in a project directory.");
+      }
+
+      if (projectName && (typeof projectName !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(projectName))) {
+        throw new Error('Invalid project name. Must contain only letters, numbers, hyphens, and underscores.');
+      }
+
+      const targetGraphId = projectName ? `project-${projectName}` : projectContext.groupId;
+
+      const searchResults = await this.performMemorySearch(
+        query.trim(),
+        scope,
+        limit,
+        reranker,
+        undefined, // no project filter for direct project search
+        targetGraphId, // use graphId instead of userId
+      );
+
+      return this.processSearchResults(searchResults, scope).map((result) => ({
+        ...result,
+        metadata: {
+          ...result.metadata,
+          scope: `project_${scope}`, // Mark as project search
+          graphId: targetGraphId,
+          projectName: projectName || projectContext.projectName,
+        },
+      }));
+    } catch (error) {
+      console.error('❌ Error searching project group:', error);
+      return [];
+    }
+  }
+
+  /**
    * Add content to project group graph
    */
   private async addToProjectGroup(graphId: string, content: string, metadata?: Record<string, unknown>): Promise<void> {
@@ -128,6 +176,8 @@ export class MemoryToolsService {
         query: 'test',
         limit: 1,
       });
+      // Graph exists, check if ontology is set
+      await this.ensureDocumentationOntology(graphId);
     } catch (error) {
       // If 404 or similar, group doesn't exist, create it
       const zepError = error as ZepError;
@@ -139,6 +189,9 @@ export class MemoryToolsService {
             description: `Project knowledge graph for ${projectName} created by temporal-bridge`,
           });
           console.log(`✅ Created project group: ${graphId}`);
+          
+          // Set up documentation ontology for new project groups
+          await this.ensureDocumentationOntology(graphId);
         } catch (createError) {
           const createZepError = createError as ZepError;
           if (!createZepError.message?.includes('already exists')) {
@@ -152,14 +205,44 @@ export class MemoryToolsService {
   }
 
   /**
+   * Ensure documentation ontology is set up for project groups
+   * This enables automatic entity classification for documentation
+   */
+  private async ensureDocumentationOntology(graphId: string): Promise<void> {
+    try {
+      // Check if ontology is already properly configured
+      const validation = await this.docOntologyService.validateOntologySetup(graphId);
+      
+      if (!validation.valid) {
+        console.log(`🔧 Setting up documentation ontology for ${graphId}...`);
+        const result = await this.docOntologyService.setDocumentationOntology(graphId);
+        
+        if (result.success) {
+          console.log(`✅ Documentation ontology configured: ${result.entityTypesSet} entities, ${result.edgeTypesSet} edges`);
+        } else {
+          console.warn(`⚠️  Failed to set ontology: ${result.error}`);
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️  Could not ensure documentation ontology: ${(error as Error).message}`);
+      // Don't throw - ontology setup is optional, graph should still work
+    }
+  }
+
+  /**
    * Search for facts and relationships (edges in knowledge graph)
    */
-  async searchFacts(query: string, limit = 5, minRating?: number, reranker?: Reranker): Promise<FactResult[]> {
+  async searchFacts(
+    query: string,
+    limit = 5,
+    minRating?: number,
+    reranker?: Zep.Reranker | 'none',
+  ): Promise<MemorySearchResult[]> {
     try {
       const searchResults = await this.zepService.graph.search({
         userId: this.zepService.userId,
         query,
-        scope: 'edges',
+        scope: Zep.GraphSearchScope.Edges,
         limit,
         reranker: reranker === 'none' ? undefined : reranker,
       });
@@ -171,12 +254,18 @@ export class MemoryToolsService {
       return searchResults.edges
         .filter((edge) => !minRating || (edge.score ?? 0) >= minRating)
         .map((edge) => ({
-          fact: edge.fact || 'Unknown fact',
+          content: edge.fact || 'Unknown fact',
           score: edge.score ?? 0,
+          type: 'edge' as const,
           created_at: edge.createdAt,
-          valid_at: edge.validAt,
-          expired_at: edge.expiredAt,
-          source_episodes: edge.episodes || [],
+          metadata: {
+            scope: 'edges',
+            uuid: edge.uuid,
+            valid_at: edge.validAt,
+            expired_at: edge.expiredAt,
+            source_episodes: edge.episodes || [],
+          },
+          _original: edge as Zep.EntityEdge,
         }));
     } catch (error) {
       console.error('Search facts error:', error);
@@ -189,9 +278,9 @@ export class MemoryToolsService {
    */
   async searchMemory(
     query: string,
-    scope: 'edges' | 'nodes' | 'episodes' = 'episodes',
+    scope: Zep.GraphSearchScope = Zep.GraphSearchScope.Episodes,
     limit = 5,
-    reranker?: Reranker,
+    reranker?: Zep.Reranker | 'none',
     projectFilter?: string,
   ): Promise<MemorySearchResult[]> {
     try {
@@ -203,22 +292,117 @@ export class MemoryToolsService {
     }
   }
 
+  /**
+   * Search knowledge graph nodes (entities with summaries)
+   */
+  async searchGraphNodes(
+    query: string,
+    limit = 10,
+    reranker?: Zep.Reranker | 'none',
+    graphId?: string
+  ): Promise<MemorySearchResult[]> {
+    try {
+      const searchResults = await this.performMemorySearch(
+        query, 
+        Zep.GraphSearchScope.Nodes, 
+        limit, 
+        reranker, 
+        undefined, 
+        graphId
+      );
+      return this.processSearchResults(searchResults, 'nodes');
+    } catch (error) {
+      console.error('Search graph nodes error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Search knowledge graph edges (relationships with facts)
+   */
+  async searchGraphEdges(
+    query: string,
+    limit = 10,
+    reranker?: Zep.Reranker | 'none',
+    graphId?: string,
+    edgeTypes?: string[]
+  ): Promise<MemorySearchResult[]> {
+    try {
+      const searchResults = await this.performMemorySearchWithFilters(
+        query,
+        Zep.GraphSearchScope.Edges,
+        limit,
+        reranker,
+        graphId,
+        edgeTypes
+      );
+      return this.processSearchResults(searchResults, 'edges');
+    } catch (error) {
+      console.error('Search graph edges error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Advanced search with filters for edge types
+   */
+  private async performMemorySearchWithFilters(
+    query: string,
+    scope: Zep.GraphSearchScope,
+    limit: number,
+    reranker?: Zep.Reranker | 'none',
+    graphId?: string,
+    edgeTypes?: string[]
+  ) {
+    const searchParams: Zep.GraphSearchQuery = {
+      query,
+      scope,
+      limit,
+      reranker: reranker === 'none' ? undefined : reranker,
+    };
+
+    // Add search filters for edge types
+    if (edgeTypes && edgeTypes.length > 0) {
+      searchParams.searchFilters = {
+        edgeTypes
+      };
+    }
+
+    // Use graphId for project searches, userId for personal searches
+    if (graphId) {
+      searchParams.graphId = graphId;
+    } else {
+      searchParams.userId = this.zepService.userId;
+    }
+
+    return await this.zepService.graph.search(searchParams);
+  }
+
   private async performMemorySearch(
     query: string,
-    scope: string,
+    scope: Zep.GraphSearchScope,
     limit: number,
-    reranker?: Reranker,
+    reranker?: Zep.Reranker | 'none',
     projectFilter?: string,
+    graphId?: string,
   ) {
     const enhancedQuery = projectFilter ? `${query} ${projectFilter}` : query;
 
-    return await this.zepService.graph.search({
-      userId: this.zepService.userId,
+    const searchParams: Zep.GraphSearchQuery = {
       query: enhancedQuery,
-      scope: scope as 'edges' | 'nodes' | 'episodes',
+      scope,
       limit,
       reranker: reranker === 'none' ? undefined : reranker,
-    });
+    };
+
+    // Use graphId for project searches, userId for personal searches
+    if (graphId) {
+      searchParams.graphId = graphId;
+    } else {
+      searchParams.userId = this.zepService.userId;
+    }
+
+    return await this.zepService.graph.search(searchParams);
   }
 
   private processSearchResults(searchResults: unknown, scope: string, projectFilter?: string): MemorySearchResult[] {
@@ -268,6 +452,7 @@ export class MemoryToolsService {
             target_node: edge.targetNodeUuid,
             episodes: edge.episodes,
           },
+          _original: edge as Zep.EntityEdge,
         });
       }
     }
@@ -302,6 +487,7 @@ export class MemoryToolsService {
             labels: node.labels,
             attributes: node.attributes,
           },
+          _original: node as Zep.EntityNode,
         });
       }
     }
@@ -340,6 +526,7 @@ export class MemoryToolsService {
             session_id: episode.sessionId,
             thread_id: episode.threadId,
           },
+          _original: episode as Zep.Episode,
         });
       }
     }
@@ -349,80 +536,31 @@ export class MemoryToolsService {
    * Comprehensive search method that supports all CLI use cases
    */
   async retrieveMemory(options: UnifiedMemoryQuery = {}): Promise<UnifiedMemoryResult[]> {
-    const results: UnifiedMemoryResult[] = [];
-
     try {
       // Handle debug commands
-      if (options.debugListProjects) {
-        console.log('🔍 DEBUG: Testing listProjectEntities() API call\n');
-        const result = await this.projectEntitiesService.listProjectEntities();
-        console.log('Raw API Response:', JSON.stringify(result, null, 2));
-        return [];
+      const debugResult = await this.handleDebugCommands(options);
+      if (debugResult !== null) {
+        return debugResult;
       }
 
-      if (options.debugPortfolio) {
-        console.log('🔍 DEBUG: Testing portfolio functionality\n');
-        console.log('Portfolio debug functionality not yet implemented');
-        return [];
-      }
+      const results: UnifiedMemoryResult[] = [];
 
-      if (options.debugCreateEntity) {
-        console.log('🔍 DEBUG: Creating test project entity\n');
-        const projectPath = process.cwd();
-        console.log(`Creating entity for project path: ${projectPath}`);
-
-        const result = await this.projectEntitiesService.ensureProjectEntity(projectPath, {
-          forceUpdate: true,
-          skipTechDetection: false,
-        });
-
-        console.log('Entity Creation Result:', JSON.stringify(result, null, 2));
-        return [];
-      }
-
-      // Handle query-based search using the existing searchMemory method
+      // Handle query-based search
       if (options.query) {
-        const searchResults = await this.searchMemory(
-          options.query,
-          options.searchScope || 'episodes',
-          options.limit || 10,
-          options.reranker,
-        );
-
-        for (const result of searchResults) {
-          results.push({
-            content: result.content,
-            score: result.score,
-            timestamp: result.created_at,
-            type: 'graph_search',
-            metadata: {
-              ...result.metadata,
-              search_scope: options.searchScope || 'episodes',
-            },
-          });
-        }
+        const queryResults = await this.handleQuerySearch(options);
+        results.push(...queryResults);
       }
 
-      // Handle thread context retrieval - simplified for now
+      // Handle thread context retrieval
       if (options.threadId) {
-        results.push({
-          content: `Thread context for ${options.threadId} - functionality to be implemented`,
-          type: 'user_context',
-          metadata: {
-            thread_id: options.threadId,
-          },
-        });
+        const threadResult = this.handleThreadContext(options.threadId);
+        results.push(threadResult);
       }
 
-      // Handle recent episodes - simplified for now
-      if (!(options.query || options.threadId)) {
-        results.push({
-          content: 'Recent episodes - functionality to be implemented',
-          type: 'recent_episodes',
-          metadata: {
-            scope: 'recent',
-          },
-        });
+      // Handle recent episodes fallback
+      if (this.shouldShowRecentEpisodes(options)) {
+        const recentResult = this.handleRecentEpisodes();
+        results.push(recentResult);
       }
 
       return results;
@@ -430,5 +568,95 @@ export class MemoryToolsService {
       console.error('❌ Error retrieving memory:', error);
       throw error;
     }
+  }
+
+  private async handleDebugCommands(options: UnifiedMemoryQuery): Promise<UnifiedMemoryResult[] | null> {
+    if (options.debugListProjects) {
+      console.log('🔍 DEBUG: Testing listProjectEntities() API call\n');
+      const result = await this.projectEntitiesService.listProjectEntities();
+      console.log('Raw API Response:', JSON.stringify(result, null, 2));
+      return [];
+    }
+
+    if (options.debugPortfolio) {
+      console.log('🔍 DEBUG: Testing portfolio functionality\n');
+      console.log('Portfolio debug functionality not yet implemented');
+      return [];
+    }
+
+    if (options.debugCreateEntity) {
+      return await this.handleDebugCreateEntity();
+    }
+
+    return null;
+  }
+
+  private async handleDebugCreateEntity(): Promise<UnifiedMemoryResult[]> {
+    console.log('🔍 DEBUG: Creating test project entity\n');
+    const projectPath = process.cwd();
+    console.log(`Creating entity for project path: ${projectPath}`);
+
+    const result = await this.projectEntitiesService.ensureProjectEntity(projectPath, {
+      forceUpdate: true,
+      skipTechDetection: false,
+    });
+
+    console.log('Entity Creation Result:', JSON.stringify(result, null, 2));
+    return [];
+  }
+
+  private async handleQuerySearch(options: UnifiedMemoryQuery): Promise<UnifiedMemoryResult[]> {
+    if (!options.query) {
+      return [];
+    }
+
+    const searchScope = this.determineSearchScope(options.searchScope);
+    const searchResults = await this.searchMemory(options.query, searchScope, options.limit || 10, options.reranker);
+
+    return searchResults.map((result) => ({
+      content: result.content,
+      score: result.score,
+      timestamp: result.created_at,
+      type: 'graph_search',
+      metadata: {
+        ...result.metadata,
+        search_scope: options.searchScope || 'episodes',
+      },
+    }));
+  }
+
+  private determineSearchScope(searchScope?: string): Zep.GraphSearchScope {
+    switch (searchScope) {
+      case 'edges':
+        return Zep.GraphSearchScope.Edges;
+      case 'nodes':
+        return Zep.GraphSearchScope.Nodes;
+      default:
+        return Zep.GraphSearchScope.Episodes;
+    }
+  }
+
+  private handleThreadContext(threadId: string): UnifiedMemoryResult {
+    return {
+      content: `Thread context for ${threadId} - functionality to be implemented`,
+      type: 'user_context',
+      metadata: {
+        thread_id: threadId,
+      },
+    };
+  }
+
+  private shouldShowRecentEpisodes(options: UnifiedMemoryQuery): boolean {
+    return !(options.query || options.threadId);
+  }
+
+  private handleRecentEpisodes(): UnifiedMemoryResult {
+    return {
+      content: 'Recent episodes - functionality to be implemented',
+      type: 'recent_episodes',
+      metadata: {
+        scope: 'recent',
+      },
+    };
   }
 }

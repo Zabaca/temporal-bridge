@@ -4,7 +4,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, type Dirent } from 'node:fs';
+import { type Dirent, existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import type { TechnologyDetection, TechnologyDetectionResult } from './types';

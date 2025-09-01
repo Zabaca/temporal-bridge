@@ -128,20 +128,19 @@ describe('MCP Tools Integration Test', () => {
   });
 
   describe('search_project Tool', () => {
-    it('should return placeholder response for project search', async () => {
+    it('should search project groups and return results', async () => {
       const result = await temporalBridgeToolsService.searchProject({
         query: 'project architecture',
         project: 'temporal-bridge',
         limit: 5,
       });
 
-      // Since project search is not yet implemented, it should return a placeholder
+      // Project search now works but returns empty results for mock data
       expect(result).toEqual({
         source: 'project',
         query: 'project architecture',
         project: 'temporal-bridge',
         results: [],
-        message: 'Project search functionality will be implemented with project groups',
       });
     });
   });
@@ -421,10 +420,9 @@ describe('MCP Tools Integration Test', () => {
 
       expect(result).toEqual({
         thread_id: 'claude-code-session-123',
-        context_summary: 'Thread context functionality will be implemented with Zep thread integration',
-        facts: [],
-        user_id: 'developer',
-        message: 'Thread context retrieval not yet implemented',
+        context_block: 'No context available for this thread',
+        user_id: 'test-developer',
+        timestamp: expect.any(String),
       });
     });
   });

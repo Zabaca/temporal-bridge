@@ -9,6 +9,12 @@ export {
   // Memory search
   MemoryToolsService,
 } from './memory-tools';
+// Documentation ontology
+export * from './doc-ontology.service';
+export {
+  // Documentation ontology service
+  DocumentationOntologyService,
+} from './doc-ontology.service';
 export * from './project-detector';
 export {
   // Project detection
@@ -38,7 +44,7 @@ export * from './types';
 export * from './zep-client';
 // Main exports for common use cases
 export {
-  type Reranker,
+  Zep,
   ZepError,
   // Zep service
   ZepService,

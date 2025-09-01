@@ -101,12 +101,18 @@ describe('Zep API Integration Test', () => {
 
       expect(results).toEqual([
         {
-          fact: 'developer PREFERS Vitest',
+          content: 'developer PREFERS Vitest',
           score: 0.92,
+          type: 'edge',
           created_at: '2024-01-01T12:00:00Z',
-          expired_at: undefined,
-          valid_at: undefined,
-          source_episodes: ['episode-testing-123'],
+          metadata: {
+            scope: 'edges',
+            uuid: 'edge-uuid',
+            valid_at: undefined,
+            expired_at: undefined,
+            source_episodes: ['episode-testing-123'],
+          },
+          _original: expect.any(Object),
         },
       ]);
     });
@@ -150,6 +156,7 @@ describe('Zep API Integration Test', () => {
         metadata: expect.objectContaining({
           scope: 'episodes',
         }),
+        _original: expect.any(Object),
       });
     });
 
@@ -272,12 +279,9 @@ describe('Zep API Integration Test', () => {
         ],
       });
 
-      expect(mockZepService.thread.addMessages).toHaveBeenCalledWith(
-        'claude-code-session-abc123',
-        {
-          messages: expect.any(Array),
-        }
-      );
+      expect(mockZepService.thread.addMessages).toHaveBeenCalledWith('claude-code-session-abc123', {
+        messages: expect.any(Array),
+      });
     });
   });
 
@@ -314,12 +318,18 @@ describe('Zep API Integration Test', () => {
       // Verify facts are processed correctly
       expect(edgeResults).toEqual([
         {
-          fact: 'developer USES TypeScript',
+          content: 'developer USES TypeScript',
           score: 0.95,
+          type: 'edge',
           created_at: '2024-01-01T00:00:00Z',
-          expired_at: undefined,
-          valid_at: undefined,
-          source_episodes: ['episode-123'],
+          metadata: {
+            scope: 'edges',
+            uuid: 'edge-uuid-3',
+            valid_at: undefined,
+            expired_at: undefined,
+            source_episodes: ['episode-123'],
+          },
+          _original: expect.any(Object),
         },
       ]);
 
@@ -333,6 +343,7 @@ describe('Zep API Integration Test', () => {
           metadata: expect.objectContaining({
             scope: 'episodes',
           }),
+          _original: expect.any(Object),
         },
       ]);
     });

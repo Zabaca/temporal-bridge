@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
-import { MemoryToolsService, ProjectEntitiesService } from '../lib';
+import { MemorySearchResult, MemoryToolsService, ProjectEntitiesService, Zep, ZepService } from '../lib';
 
 @Injectable()
 export class TemporalBridgeToolsService {
   constructor(
     private readonly memoryTools: MemoryToolsService,
     private readonly projectEntities: ProjectEntitiesService,
+    private readonly zepService: ZepService,
   ) {}
 
   @Tool({
@@ -53,15 +54,40 @@ export class TemporalBridgeToolsService {
         .describe('Reranker type for better accuracy'),
     }),
   })
-  searchProject(input: { query: string; project?: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
-    // TODO: Implement project-specific search when project groups are set up
-    return {
-      source: 'project',
-      query: input.query,
-      project: input.project || 'current',
-      results: [],
-      message: 'Project search functionality will be implemented with project groups',
-    };
+  async searchProject(input: { query: string; project?: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
+    try {
+      const results = await this.memoryTools.searchProjectGroup(
+        input.query,
+        input.project,
+        'episodes', // Default to episodes for better results
+        input.limit || 5,
+        input.reranker === 'none' ? undefined : input.reranker || Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        source: 'project',
+        query: input.query,
+        project: input.project || 'current',
+        results: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              type: r.type,
+              metadata: r.metadata,
+            }))
+          : [],
+      };
+    } catch (error) {
+      console.error('❌ Error searching project:', error);
+      return {
+        source: 'project',
+        query: input.query,
+        project: input.project || 'current',
+        results: [],
+        error: `Failed to search project: ${(error as Error).message}`,
+      };
+    }
   }
 
   @Tool({
@@ -285,14 +311,740 @@ export class TemporalBridgeToolsService {
       min_rating: z.number().optional().describe('Minimum fact confidence rating 0-1'),
     }),
   })
-  getThreadContext(input: { thread_id: string; min_rating?: number }) {
-    // TODO: Implement thread context retrieval when Zep thread API is integrated
+  async getThreadContext(input: { thread_id: string; min_rating?: number }) {
+    try {
+      // Ensure user and thread exist in Zep
+      await this.zepService.ensureUser();
+      await this.zepService.ensureThread(input.thread_id);
+
+      // Get Zep's intelligent context block for this thread
+      // Use mode: "basic" to get structured FACTS and ENTITIES format
+      const threadContext = await this.zepService.thread.getUserContext(input.thread_id, {
+        mode: 'basic', // Get structured FACTS/ENTITIES format, not summary
+      });
+
+      // The context block contains structured FACTS and ENTITIES
+      const contextBlock = threadContext?.context || 'No context available for this thread';
+
+      return {
+        thread_id: input.thread_id,
+        context_block: contextBlock, // Full structured context with FACTS/ENTITIES/EPISODES
+        user_id: this.zepService.userId,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Error getting thread context:', error);
+      return {
+        thread_id: input.thread_id,
+        context_block: 'Error retrieving thread context',
+        user_id: this.zepService.userId,
+        error: (error as Error).message,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  @Tool({
+    name: 'list_entity_types',
+    description: 'List all entity types available in Zep knowledge graphs',
+    parameters: z.object({}),
+  })
+  async listEntityTypes() {
+    try {
+      await this.zepService.ensureUser();
+      const entityTypes = await this.zepService.graph.listEntityTypes();
+
+      return {
+        entity_types: entityTypes,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('Error listing entity types:', error);
+      throw new Error(`Failed to list entity types: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  @Tool({
+    name: 'ingest_documentation',
+    description: 'Ingest documentation files into the knowledge graph for automatic entity extraction',
+    parameters: z.object({
+      file_path: z.string().describe('Path to the documentation file to ingest'),
+      content: z.string().describe('Content of the documentation file (with frontmatter)'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+    }),
+  })
+  async ingestDocumentation(input: { file_path: string; content: string; project?: string }) {
+    try {
+      // Validate inputs
+      if (!(input.file_path && input.content)) {
+        throw new Error('Both file_path and content are required');
+      }
+
+      if (input.content.length > 10000) {
+        throw new Error('Document content is too large (max 10,000 characters). Consider chunking large documents.');
+      }
+
+      // Use existing shareToProjectGroup infrastructure but for documentation
+      const result = await this.memoryTools.shareToProjectGroup(
+        `[DOCUMENTATION] ${input.file_path}\n\n${input.content}`,
+        input.project,
+      );
+
+      return {
+        success: result.success,
+        message: `✅ Documentation ingested successfully\n📄 File: ${input.file_path}\n🤖 Zep will automatically extract entities based on the custom ontology\n🔗 Graph ID: ${result.graphId}`,
+        file_path: input.file_path,
+        graph_id: result.graphId,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Error ingesting documentation:', error);
+      return {
+        success: false,
+        error: `Failed to ingest documentation: ${(error as Error).message}`,
+        file_path: input.file_path,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  @Tool({
+    name: 'find_component_docs',
+    description: 'Find all documentation for a specific architectural component',
+    parameters: z.object({
+      component_name: z.string().describe('Name of the component to find documentation for'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(10).describe('Maximum number of results to return'),
+    }),
+  })
+  async findComponentDocs(input: { component_name: string; project?: string; limit?: number }) {
+    try {
+      const searchQuery = `Architecture component ${input.component_name} documentation implementation`;
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        input.limit || 10,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        component: input.component_name,
+        project: input.project || 'current',
+        documentation: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error finding component documentation:', error);
+      return {
+        success: false,
+        component: input.component_name,
+        project: input.project || 'current',
+        error: `Failed to find component documentation: ${(error as Error).message}`,
+        documentation: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'get_architecture_overview',
+    description: 'Get high-level architecture overview and system design documentation',
+    parameters: z.object({
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      c4_layer: z.enum(['context', 'container', 'component', 'code']).optional().describe('Specific C4 layer to focus on'),
+    }),
+  })
+  async getArchitectureOverview(input: { project?: string; c4_layer?: 'context' | 'container' | 'component' | 'code' }) {
+    try {
+      const layerQuery = input.c4_layer ? `C4 ${input.c4_layer} layer` : 'architecture overview system design';
+      const searchQuery = `${layerQuery} TemporalBridge architecture system context`;
+      
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        10,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        project: input.project || 'current',
+        c4_layer: input.c4_layer || 'all',
+        overview: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error getting architecture overview:', error);
+      return {
+        success: false,
+        project: input.project || 'current',
+        c4_layer: input.c4_layer || 'all',
+        error: `Failed to get architecture overview: ${(error as Error).message}`,
+        overview: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'find_architecture_decisions',
+    description: 'Find Architecture Decision Records (ADRs) and related implementation details',
+    parameters: z.object({
+      decision_topic: z.string().optional().describe('Specific decision topic to search for'),
+      status: z.enum(['proposed', 'accepted', 'deprecated', 'superseded']).optional().describe('Filter by decision status'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(5).describe('Maximum number of results to return'),
+    }),
+  })
+  async findArchitectureDecisions(input: {
+    decision_topic?: string;
+    status?: 'proposed' | 'accepted' | 'deprecated' | 'superseded';
+    project?: string;
+    limit?: number;
+  }) {
+    try {
+      const topicQuery = input.decision_topic || 'architecture decision';
+      const statusFilter = input.status ? `status ${input.status}` : '';
+      const searchQuery = `ArchitectureDecision ADR ${topicQuery} ${statusFilter} architectural choice`.trim();
+
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        input.limit || 5,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        decision_topic: input.decision_topic || 'all',
+        status: input.status || 'any',
+        project: input.project || 'current',
+        decisions: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error finding architecture decisions:', error);
+      return {
+        success: false,
+        decision_topic: input.decision_topic || 'all',
+        status: input.status || 'any',
+        project: input.project || 'current',
+        error: `Failed to find architecture decisions: ${(error as Error).message}`,
+        decisions: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'search_data_models',
+    description: 'Search for data model definitions, schemas, and related documentation',
+    parameters: z.object({
+      model_name: z.string().optional().describe('Specific data model name to search for'),
+      storage_layer: z.enum(['postgres', 'redis', 'zep', 'memory', 'file', 'api']).optional().describe('Filter by storage layer'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(5).describe('Maximum number of results to return'),
+    }),
+  })
+  async searchDataModels(input: {
+    model_name?: string;
+    storage_layer?: 'postgres' | 'redis' | 'zep' | 'memory' | 'file' | 'api';
+    project?: string;
+    limit?: number;
+  }) {
+    try {
+      const modelQuery = input.model_name || 'DataModel';
+      const storageFilter = input.storage_layer ? `${input.storage_layer} storage` : '';
+      const searchQuery = `${modelQuery} schema definition interface ${storageFilter} data structure`.trim();
+
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        input.limit || 5,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        model_name: input.model_name || 'all',
+        storage_layer: input.storage_layer || 'any',
+        project: input.project || 'current',
+        models: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error searching data models:', error);
+      return {
+        success: false,
+        model_name: input.model_name || 'all',
+        storage_layer: input.storage_layer || 'any',
+        project: input.project || 'current',
+        error: `Failed to search data models: ${(error as Error).message}`,
+        models: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'trace_component_dependencies',
+    description: 'Trace dependencies and relationships between architectural components',
+    parameters: z.object({
+      component_name: z.string().describe('Component to trace dependencies for'),
+      direction: z.enum(['depends_on', 'depended_by', 'both']).optional().default('both').describe('Direction of dependencies to trace'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+    }),
+  })
+  async traceComponentDependencies(input: {
+    component_name: string;
+    direction?: 'depends_on' | 'depended_by' | 'both';
+    project?: string;
+  }) {
+    try {
+      let searchQuery = '';
+      switch (input.direction) {
+        case 'depends_on':
+          searchQuery = `${input.component_name} depends on dependency requires`;
+          break;
+        case 'depended_by':
+          searchQuery = `dependency ${input.component_name} used by required by`;
+          break;
+        default:
+          searchQuery = `${input.component_name} dependency relationship depends uses`;
+      }
+
+      const results = await this.memoryTools.searchProjectGroup(
+        searchQuery,
+        input.project,
+        'episodes',
+        10,
+        Zep.Reranker.CrossEncoder,
+      );
+
+      return {
+        success: true,
+        component: input.component_name,
+        direction: input.direction || 'both',
+        project: input.project || 'current',
+        dependencies: results
+          ? results.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('❌ Error tracing component dependencies:', error);
+      return {
+        success: false,
+        component: input.component_name,
+        direction: input.direction || 'both',
+        project: input.project || 'current',
+        error: `Failed to trace component dependencies: ${(error as Error).message}`,
+        dependencies: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'search_graph_nodes',
+    description: 'Search knowledge graph entity nodes for summaries and attributes',
+    parameters: z.object({
+      query: z.string().describe('Search query for entity nodes'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(10).describe('Maximum number of results to return'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
+    }),
+  })
+  async searchGraphNodes(input: {
+    query: string;
+    project?: string;
+    limit?: number;
+    reranker?: 'cross_encoder' | 'none';
+  }) {
+    try {
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+
+      if (!graphId) {
+        throw new Error('No project context available for graph search');
+      }
+
+      const results = await this.memoryTools.searchGraphNodes(
+        input.query,
+        input.limit || 10,
+        input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
+        graphId
+      );
+
+      return {
+        success: true,
+        search_type: 'nodes',
+        query: input.query,
+        project: input.project || 'current',
+        graph_id: graphId,
+        entities: results.map((r) => ({
+          name: r.content.split('\n')[0] || 'Unknown Entity',
+          summary: r.content,
+          score: r.score,
+          timestamp: r.created_at,
+          metadata: r.metadata,
+        })),
+        count: results.length,
+      };
+    } catch (error) {
+      console.error('❌ Error searching graph nodes:', error);
+      return {
+        success: false,
+        search_type: 'nodes',
+        query: input.query,
+        project: input.project || 'current',
+        error: `Failed to search graph nodes: ${(error as Error).message}`,
+        entities: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'search_graph_edges',
+    description: 'Search knowledge graph edges for relationships and facts',
+    parameters: z.object({
+      query: z.string().describe('Search query for relationship facts'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      edge_types: z
+        .array(z.string())
+        .optional()
+        .describe('Filter by specific edge types (e.g., IMPLEMENTS, SUPERSEDES, DEPENDS_ON)'),
+      limit: z.number().optional().default(10).describe('Maximum number of results to return'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
+    }),
+  })
+  async searchGraphEdges(input: {
+    query: string;
+    project?: string;
+    edge_types?: string[];
+    limit?: number;
+    reranker?: 'cross_encoder' | 'none';
+  }) {
+    try {
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+
+      if (!graphId) {
+        throw new Error('No project context available for graph search');
+      }
+
+      const results = await this.memoryTools.searchGraphEdges(
+        input.query,
+        input.limit || 10,
+        input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
+        graphId,
+        input.edge_types
+      );
+
+      return {
+        success: true,
+        search_type: 'edges',
+        query: input.query,
+        project: input.project || 'current',
+        graph_id: graphId,
+        edge_types_filter: input.edge_types || [],
+        relationships: results.map((r) => ({
+          fact: r.content,
+          score: r.score,
+          timestamp: r.created_at,
+          metadata: r.metadata,
+        })),
+        count: results.length,
+      };
+    } catch (error) {
+      console.error('❌ Error searching graph edges:', error);
+      return {
+        success: false,
+        search_type: 'edges',
+        query: input.query,
+        project: input.project || 'current',
+        error: `Failed to search graph edges: ${(error as Error).message}`,
+        relationships: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'get_entity_episodes',
+    description: 'Find source episodes that created or mentioned a specific entity',
+    parameters: z.object({
+      entity_query: z.string().describe('Search query to identify the entity (e.g., component name, concept)'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(5).describe('Maximum number of episodes to return'),
+    }),
+  })
+  async getEntityEpisodes(input: { entity_query: string; project?: string; limit?: number }) {
+    try {
+      // First search for nodes to identify relevant entities
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+
+      if (!graphId) {
+        throw new Error('No project context available for entity lookup');
+      }
+
+      // Search episodes that mention this entity
+      const episodeResults = await this.memoryTools.searchProjectGroup(
+        `${input.entity_query} entity mentions source documentation`,
+        input.project,
+        'episodes',
+        input.limit || 5,
+        Zep.Reranker.CrossEncoder
+      );
+
+      return {
+        success: true,
+        entity_query: input.entity_query,
+        project: input.project || 'current',
+        graph_id: graphId,
+        source_episodes: episodeResults
+          ? episodeResults.map((r) => ({
+              content: r.content,
+              score: r.score,
+              timestamp: r.created_at,
+              metadata: r.metadata,
+            }))
+          : [],
+        count: episodeResults?.length || 0,
+        note: 'Episodes that likely contributed to creating or mentioning this entity',
+      };
+    } catch (error) {
+      console.error('❌ Error finding entity episodes:', error);
+      return {
+        success: false,
+        entity_query: input.entity_query,
+        project: input.project || 'current',
+        error: `Failed to find entity episodes: ${(error as Error).message}`,
+        source_episodes: [],
+        count: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'get_episode_mentions',
+    description: 'Get entities and relationships that were extracted from a specific episode',
+    parameters: z.object({
+      episode_query: z.string().describe('Query to identify the episode (e.g., filename, topic, timestamp)'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      limit: z.number().optional().default(10).describe('Maximum number of mentions to return'),
+    }),
+  })
+  async getEpisodeMentions(input: { episode_query: string; project?: string; limit?: number }) {
+    try {
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+
+      if (!graphId) {
+        throw new Error('No project context available for episode lookup');
+      }
+
+      // Search for related entities and relationships mentioned in this episode
+      const entityResults = await this.memoryTools.searchGraphNodes(
+        `${input.episode_query} mentions entities`,
+        Math.ceil((input.limit || 10) / 2),
+        Zep.Reranker.CrossEncoder,
+        graphId
+      );
+
+      const relationshipResults = await this.memoryTools.searchGraphEdges(
+        `${input.episode_query} relationships facts`,
+        Math.ceil((input.limit || 10) / 2),
+        Zep.Reranker.CrossEncoder,
+        graphId
+      );
+
+      return {
+        success: true,
+        episode_query: input.episode_query,
+        project: input.project || 'current',
+        graph_id: graphId,
+        extracted_entities: entityResults.map((r) => ({
+          entity: r.content.split('\n')[0] || 'Unknown Entity',
+          summary: r.content,
+          score: r.score,
+          metadata: r.metadata,
+        })),
+        extracted_relationships: relationshipResults.map((r) => ({
+          fact: r.content,
+          score: r.score,
+          metadata: r.metadata,
+        })),
+        entities_count: entityResults.length,
+        relationships_count: relationshipResults.length,
+        total_mentions: entityResults.length + relationshipResults.length,
+      };
+    } catch (error) {
+      console.error('❌ Error finding episode mentions:', error);
+      return {
+        success: false,
+        episode_query: input.episode_query,
+        project: input.project || 'current',
+        error: `Failed to find episode mentions: ${(error as Error).message}`,
+        extracted_entities: [],
+        extracted_relationships: [],
+        entities_count: 0,
+        relationships_count: 0,
+        total_mentions: 0,
+      };
+    }
+  }
+
+  @Tool({
+    name: 'search_with_filters',
+    description: 'Advanced search with filters for specific relationship types and scopes',
+    parameters: z.object({
+      query: z.string().describe('Search query'),
+      scope: z.enum(['nodes', 'edges', 'episodes']).describe('Search scope: nodes (entities), edges (relationships), or episodes (documents)'),
+      project: z.string().optional().describe('Target project name (defaults to current project)'),
+      edge_types: z
+        .array(z.string())
+        .optional()
+        .describe('Filter by edge types: IMPLEMENTS, SUPERSEDES, DEPENDS_ON, USES_DATA_MODEL, AFFECTED_BY, DOCUMENTS'),
+      limit: z.number().optional().default(10).describe('Maximum number of results to return'),
+      reranker: z
+        .enum(['cross_encoder', 'none'])
+        .optional()
+        .default('cross_encoder')
+        .describe('Reranker type for better accuracy'),
+    }),
+  })
+  async searchWithFilters(input: {
+    query: string;
+    scope: 'nodes' | 'edges' | 'episodes';
+    project?: string;
+    edge_types?: string[];
+    limit?: number;
+    reranker?: 'cross_encoder' | 'none';
+  }) {
+    try {
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+
+      const results = await this.performScopedSearch(input, graphId);
+
+      return {
+        success: true,
+        query: input.query,
+        scope: input.scope,
+        project: input.project || 'current',
+        graph_id: graphId || 'N/A',
+        filters: {
+          edge_types: input.edge_types || [],
+        },
+        results: results.map((r) => ({
+          content: r.content,
+          score: r.score,
+          type: r.type,
+          timestamp: r.created_at,
+          metadata: r.metadata,
+        })),
+        count: results.length,
+      };
+    } catch (error) {
+      console.error('❌ Error in advanced search with filters:', error);
+      return this.createErrorResponse(input, error as Error);
+    }
+  }
+
+  private async performScopedSearch(
+    input: {
+      query: string;
+      scope: 'nodes' | 'edges' | 'episodes';
+      project?: string;
+      edge_types?: string[];
+      limit?: number;
+      reranker?: 'cross_encoder' | 'none';
+    },
+    graphId: string | undefined
+  ): Promise<MemorySearchResult[]> {
+    const reranker = input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder;
+    const limit = input.limit || 10;
+
+    if (input.scope === 'nodes') {
+      return await this.memoryTools.searchGraphNodes(input.query, limit, reranker, graphId);
+    }
+    
+    if (input.scope === 'edges') {
+      return await this.memoryTools.searchGraphEdges(input.query, limit, reranker, graphId, input.edge_types);
+    }
+    
+    // episodes scope
+    const episodeResults = await this.memoryTools.searchProjectGroup(
+      input.query,
+      input.project,
+      'episodes',
+      limit,
+      reranker
+    );
+    return episodeResults || [];
+  }
+
+  private createErrorResponse(
+    input: { query: string; scope: 'nodes' | 'edges' | 'episodes'; project?: string },
+    error: Error
+  ) {
     return {
-      thread_id: input.thread_id,
-      context_summary: 'Thread context functionality will be implemented with Zep thread integration',
-      facts: [],
-      user_id: 'developer',
-      message: 'Thread context retrieval not yet implemented',
+      success: false,
+      query: input.query,
+      scope: input.scope,
+      project: input.project || 'current',
+      error: `Failed to search with filters: ${error.message}`,
+      results: [],
+      count: 0,
     };
   }
 }

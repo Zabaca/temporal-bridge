@@ -42,10 +42,10 @@ Shows the main technical components:
 - Modular architecture allows independent CLI and MCP server operation
 
 ### Level 3: Components  
-**File**: `c4-level3-component.puml`
+**File**: `c4-level3-cli-components.md`
 
 Shows internal components of the CLI container:
-- **Business Logic**: Memory Tools, Project Entities Service, Session Manager
+- **Business Logic**: Memory Tools, Project Entities Service, Session Manager, Documentation Ontology
 - **Infrastructure**: Zep Client, Project Detector, Conversation Parser
 - **Interfaces**: CLI Commands, MCP Tools Service
 - **Data Access**: File Operations layer
@@ -54,6 +54,7 @@ Shows internal components of the CLI container:
 - Clean separation between business logic and infrastructure
 - NestJS dependency injection enables testable, modular design
 - Project intelligence provides automatic technology detection and relationship mapping
+- Documentation ontology enables automatic entity classification and knowledge graph construction
 
 ### Level 4: Code
 **File**: `c4-level4-code.puml`
@@ -135,9 +136,10 @@ When modifying the architecture:
 
 ### Common Updates
 - **New MCP Tools**: Update Level 2 container notes and Level 3 component relationships
-- **New Services**: Add to Level 3 components and Level 4 class diagrams
+- **New Services**: Add to Level 3 components and Level 4 class diagrams  
 - **External Integrations**: Update Level 1 context and Level 2 container boundaries
 - **Technology Changes**: Update Level 2 container technologies and Level 3 dependencies
+- **Documentation System Changes**: Update ontology references and knowledge graph capabilities
 
 ## Additional Resources
 
@@ -150,4 +152,4 @@ When modifying the architecture:
 
 ---
 
-**Note**: These diagrams represent the current Node.js architecture after migration from Deno. They use modern Mermaid syntax for better tooling support and are rendered natively on GitHub/GitLab. The diagrams reflect the User Graph Architecture with manual knowledge curation and the full MCP server integration with 11 available tools.
+**Note**: These diagrams represent the current Node.js architecture after migration from Deno. They use modern Mermaid syntax for better tooling support and are rendered natively on GitHub/GitLab. The diagrams reflect the User Graph Architecture with manual knowledge curation and the full MCP server integration with 15 available tools, including comprehensive documentation knowledge graph capabilities.
