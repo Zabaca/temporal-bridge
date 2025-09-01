@@ -324,7 +324,7 @@ export class TemporalBridgeToolsService {
       });
 
       // The context block contains structured FACTS and ENTITIES
-      const contextBlock = threadContext.context || 'No context available for this thread';
+      const contextBlock = threadContext?.context || 'No context available for this thread';
 
       return {
         thread_id: input.thread_id,

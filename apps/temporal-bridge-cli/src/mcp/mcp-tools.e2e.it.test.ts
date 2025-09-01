@@ -420,10 +420,9 @@ describe('MCP Tools Integration Test', () => {
 
       expect(result).toEqual({
         thread_id: 'claude-code-session-123',
-        context_summary: 'Thread context functionality will be implemented with Zep thread integration',
-        facts: [],
-        user_id: 'developer',
-        message: 'Thread context retrieval not yet implemented',
+        context_block: 'No context available for this thread',
+        user_id: 'test-developer',
+        timestamp: expect.any(String),
       });
     });
   });
