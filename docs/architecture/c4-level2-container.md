@@ -30,7 +30,7 @@ flowchart TB
     subgraph TB_SYSTEM["🧠 TemporalBridge System"]
         CLI[🖥️ TemporalBridge CLI<br/>Node.js, NestJS<br/>Command-line interface for direct<br/>memory operations and project management]
         
-        MCP[🔌 MCP Server<br/>Node.js, NestJS, @rekog/mcp-nest<br/>Model Context Protocol server providing<br/>memory tools to Claude Code]
+        MCP[🔌 MCP Server<br/>Node.js, NestJS, @rekog/mcp-nest<br/>Model Context Protocol server providing<br/>15 memory and documentation tools to Claude Code]
         
         HOOK[🪝 Claude Code Hook<br/>File-based integration<br/>Automatically captures Claude Code<br/>conversations and stores them in user graph]
         
@@ -78,7 +78,7 @@ flowchart TB
     class CACHE,CONFIG database
 ```
 
-## MCP Server Tools (11 Available)
+## MCP Server Tools (15 Available)
 - **`search_personal`** - Personal memory search
 - **`search_project`** - Project knowledge search  
 - **`search_all`** - Combined search with source labels
@@ -90,6 +90,11 @@ flowchart TB
 - **`project_technologies`** - Technology breakdown per project
 - **`get_current_context`** - Session context management
 - **`get_thread_context`** - Thread-specific analysis
+- **`ingest_documentation`** - Add documentation to knowledge graph
+- **`search_graph_nodes`** - Search entity summaries and attributes
+- **`search_graph_edges`** - Search relationships and facts
+- **`search_with_filters`** - Advanced search with edge type filters
+- **`find_component_docs`** - Find documentation for architectural components
 
 ## Automatic Hook Capture
 - **All Claude Code conversations** - Seamless integration

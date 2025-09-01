@@ -35,7 +35,7 @@ flowchart TD
         %% Interface Layer
         CLI_CMD[⌨️ CLI Commands<br/>nest-commander<br/>Command-line interface for search,<br/>store-conversation, and share-knowledge operations]
         
-        MCP_TOOLS[🔌 MCP Tools Service<br/>@rekog/mcp-nest<br/>Implements 11 MCP tools for<br/>Claude Code integration]
+        MCP_TOOLS[🔌 MCP Tools Service<br/>@rekog/mcp-nest<br/>Implements 15 MCP tools for<br/>Claude Code integration]
         
         %% Business Logic Layer
         MEMORY[🧠 Memory Tools<br/>TypeScript Service<br/>Core memory search, storage,<br/>and sharing functionality]
@@ -43,6 +43,8 @@ flowchart TD
         PROJ_ENT[📊 Project Entities Service<br/>TypeScript Service<br/>Project detection, technology analysis,<br/>and entity management]
         
         SESSION[🗂️ Session Manager<br/>TypeScript Service<br/>Session caching, project entity<br/>persistence, and metadata management]
+        
+        DOC_ONT[📋 Documentation Ontology<br/>TypeScript Service<br/>Custom entity types, edge definitions,<br/>and Zep ontology management]
         
         %% Infrastructure Layer
         ZEP_CLIENT[🌐 Zep Service<br/>ZepClient<br/>Zep Cloud API integration with<br/>user management and thread handling]
@@ -65,6 +67,7 @@ flowchart TD
     MCP_TOOLS --> MEMORY
     MCP_TOOLS --> PROJ_ENT
     MCP_TOOLS --> SESSION
+    MCP_TOOLS --> DOC_ONT
     
     %% Service Dependencies
     MEMORY --> ZEP_CLIENT
@@ -73,6 +76,7 @@ flowchart TD
     PROJ_ENT --> PROJ_DET
     PROJ_ENT --> SESSION
     SESSION --> FILE_OPS
+    DOC_ONT --> ZEP_CLIENT
     
     %% Infrastructure Dependencies
     PROJ_DET --> FILE_OPS
@@ -96,7 +100,7 @@ flowchart TD
     
     class MAIN application
     class CLI_CMD,MCP_TOOLS interface
-    class MEMORY,PROJ_ENT,SESSION business
+    class MEMORY,PROJ_ENT,SESSION,DOC_ONT business
     class ZEP_CLIENT,PROJ_DET,CONV_PARSER infrastructure
     class FILE_OPS data
     class CLAUDE,ZEP,FS external
@@ -110,6 +114,13 @@ flowchart TD
 - **`shareKnowledge()`** - Curate insights to project groups
 - **`getRecentEpisodes()`** - Context building for conversations
 - **`storeConversation()`** - Save conversations to user graph
+
+## Documentation Knowledge Graph Functions
+- **`ingestDocumentation()`** - Add documentation to knowledge graph with entity extraction
+- **`searchGraphNodes()`** - Search entity summaries and attributes
+- **`searchGraphEdges()`** - Search relationships and facts  
+- **`searchWithFilters()`** - Advanced search with edge type filters
+- **`setOntology()`** - Configure custom entity and edge types for classification
 
 ## Project Intelligence Capabilities
 - **`ensureProjectEntity()`** - Create/update project entities
