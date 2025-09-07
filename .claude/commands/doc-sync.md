@@ -48,10 +48,13 @@ Automatically analyzes recent commits and syncs architecture documentation based
 ### **Phase 4: Knowledge Graph Sync**
 ```markdown
 1. Identify all updated/created documentation files
-2. Re-ingest documents using mcp__temporal-bridge__ingest_documentation
-3. Verify successful ingestion and searchability
-4. Report sync completion status
+2. Read each file using Read tool to get agent-generated content
+3. Re-ingest documents using mcp__temporal-bridge__ingest_documentation with read content
+4. Verify successful ingestion and searchability
+5. Report sync completion status
 ```
+
+**Critical Rule**: Always read the agent-generated file and pass its exact content to the ingestion tool. Never manually rewrite or recreate the content during ingestion.
 
 ## Usage Patterns
 
@@ -130,10 +133,26 @@ git commit -m "Add new authentication service"
 - **Cross-Reference Validation**: Verify consistency across multiple documentation files
 
 ### **Knowledge Graph Ingestion**
+- **File Reading**: Read agent-generated files using Read tool (NEVER rewrite agent content)
+- **Content Preservation**: Ingest exact agent output without modification
 - **Batch Processing**: Efficiently re-ingest multiple updated documents
 - **Dependency Tracking**: Update related entities and relationships
 - **Validation**: Confirm successful ingestion and searchability
 - **Error Handling**: Report and retry failed ingestions
+
+### **Critical Implementation Rule**
+**NEVER rewrite agent-generated content during ingestion**:
+```typescript
+// ✅ CORRECT: Read agent's file and ingest as-is
+const content = Read(filePath)
+mcp__temporal-bridge__ingest_documentation({ file_path: filePath, content })
+
+// ❌ WRONG: Manually rewriting agent's work
+mcp__temporal-bridge__ingest_documentation({ 
+  file_path: filePath, 
+  content: "manually rewritten content..." // This defeats agent purpose
+})
+```
 
 ## Success Criteria
 

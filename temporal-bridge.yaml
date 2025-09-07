@@ -1,4 +1,43 @@
-sessionId: 933bb12d-726c-4892-905c-fa3d5b76500b
-lastUpdated: 2025-09-07T19:36:30.695Z
+sessionId: abf527a0-bb87-43e2-8da6-f79758bd1612
+lastUpdated: 2025-09-07T23:22:12.489Z
+projectEntityCache:
+  lastProcessed: 2025-09-07T23:15:34.809Z
+  success: true
+  technologiesDetected: 3
+  projectEntity:
+    projectId: zabaca-temporal-bridge
+    projectName: temporal-bridge
+    displayName: temporal-bridge
+    organization: Zabaca
+    projectPath: /home/uptown/Projects/zabaca/temporal-bridge
+    projectType: git
+    repository: git@github.com:Zabaca/temporal-bridge.git
+  relationships:
+    - subject: developer
+      predicate: WORKS_ON
+      object: zabaca-temporal-bridge
+      confidence: 1
+      context: Project developer relationship
+    - subject: zabaca-temporal-bridge
+      predicate: USES
+      object: Node.js
+      confidence: 0.95
+      context: "Dependency: @types/node; Engine requirement"
+    - subject: zabaca-temporal-bridge
+      predicate: USES
+      object: TypeScript
+      confidence: 0.95
+      context: "Dependency: typescript; 8 .ts files (12.1%)"
+    - subject: zabaca-temporal-bridge
+      predicate: USES
+      object: Vitest
+      confidence: 0.85
+      context: "Dependency: vitest"
+    - subject: zabaca-temporal-bridge
+      predicate: BELONGS_TO
+      object: Zabaca
+      confidence: 0.95
+      context: Organization ownership
 metadata:
-  source: session-start-hook
+  source: claude-code-hook
+  projectId: zabaca-temporal-bridge
