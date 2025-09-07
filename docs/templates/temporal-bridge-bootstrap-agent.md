@@ -162,7 +162,7 @@ search_graph_edges("MemoryToolsService")
 
 ### **Architecture Query Structure**
 - **C4 Organization**: When asked about architecture, organize responses by C4 levels
-- **Hierarchical Presentation**: Present Context → Container → Component → Code systematically  
+- **Hierarchical Presentation**: Present Context → Container → Component → Code systematically
 - **Level-Specific Queries**: Use targeted searches for each C4 layer
 - **Architectural Clarity**: Make the C4 methodology the organizing principle, not just labels
 

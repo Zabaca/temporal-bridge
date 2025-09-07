@@ -1,25 +1,17 @@
-sessionId: 6c436c11-9421-450c-93ab-3102d8950fcf
-lastUpdated: 2025-09-01T21:11:31.522Z
+sessionId: 99f576ac-8214-4a67-a696-543876e62f8a
+lastUpdated: 2025-09-07T06:41:02.247Z
 projectEntityCache:
-  lastProcessed: 2025-08-30T19:06:26.441Z
+  lastProcessed: 2025-09-07T06:38:21.092Z
   success: true
-  technologiesDetected: 2
+  technologiesDetected: 3
   projectEntity:
     projectId: zabaca-temporal-bridge
     projectName: temporal-bridge
     displayName: temporal-bridge
-    organization: zabaca
+    organization: Zabaca
     projectPath: /home/uptown/Projects/zabaca/temporal-bridge
     projectType: git
-  technologies:
-    - name: Deno
-      confidence: 0.95
-      source: deno.json
-      context: "Configuration: deno.json"
-    - name: TypeScript
-      confidence: 0.95
-      source: deno.json
-      context: Compiler options present; 18 .ts files (50.0%)
+    repository: git@github.com:Zabaca/temporal-bridge.git
   relationships:
     - subject: developer
       predicate: WORKS_ON
@@ -28,86 +20,24 @@ projectEntityCache:
       context: Project developer relationship
     - subject: zabaca-temporal-bridge
       predicate: USES
-      object: Deno
+      object: Node.js
       confidence: 0.95
-      context: "Configuration: deno.json"
+      context: "Dependency: @types/node; Engine requirement"
     - subject: zabaca-temporal-bridge
       predicate: USES
       object: TypeScript
       confidence: 0.95
-      context: Compiler options present; 18 .ts files (50.0%)
+      context: "Dependency: typescript; 8 .ts files (13.1%)"
+    - subject: zabaca-temporal-bridge
+      predicate: USES
+      object: Vitest
+      confidence: 0.85
+      context: "Dependency: vitest"
     - subject: zabaca-temporal-bridge
       predicate: BELONGS_TO
-      object: zabaca
+      object: Zabaca
       confidence: 0.95
       context: Organization ownership
-  rawResponses:
-    entityCreation:
-      success: true
-      projectEntity:
-        type: Project
-        name: zabaca-temporal-bridge
-        properties:
-          displayName: temporal-bridge
-          organization: zabaca
-          projectType: git
-          technologies:
-            - Deno
-            - TypeScript
-          path: /home/uptown/Projects/zabaca/temporal-bridge
-          created: 2025-08-30T19:06:25.797Z
-          lastUpdated: 2025-08-30T19:06:25.797Z
-          confidence:
-            Deno: 0.95
-            TypeScript: 0.95
-          metadata:
-            groupId: project-zabaca-temporal-bridge
-            detectionSources:
-              - deno.json
-              - deno.json
-            overallConfidence: 0.95
-            detectedAt: 2025-08-30T19:06:25.797Z
-      relationships:
-        - subject: developer
-          predicate: WORKS_ON
-          object: zabaca-temporal-bridge
-          confidence: 1
-          context: Project developer relationship
-        - subject: zabaca-temporal-bridge
-          predicate: USES
-          object: Deno
-          confidence: 0.95
-          context: "Configuration: deno.json"
-        - subject: zabaca-temporal-bridge
-          predicate: USES
-          object: TypeScript
-          confidence: 0.95
-          context: Compiler options present; 18 .ts files (50.0%)
-        - subject: zabaca-temporal-bridge
-          predicate: BELONGS_TO
-          object: zabaca
-          confidence: 0.95
-          context: Organization ownership
-      technologiesDetected: 2
-      detectedTechnologies:
-        - name: Deno
-          confidence: 0.95
-          source: deno.json
-          context: "Configuration: deno.json"
-        - name: TypeScript
-          confidence: 0.95
-          source: deno.json
-          context: Compiler options present; 18 .ts files (50.0%)
-      message: Project entity created successfully with 4 relationships
-    relationshipCreation:
-      success: true
-      message: Session 6c38816f-0596-4203-93e2-6d97ec386bbd linked to project
-        zabaca-temporal-bridge
-  performance:
-    detectionTimeMs: 841
-    creationTimeMs: 80
-    totalTimeMs: 921
-  errors: []
 metadata:
   source: claude-code-hook
   projectId: zabaca-temporal-bridge
