@@ -1,7 +1,7 @@
 ---
 description: Bootstrap TemporalBridge architecture documentation for new projects
 model: claude-3-5-sonnet-20241022
-allowed-tools: mcp__temporal-bridge__search_graph_nodes, mcp__temporal-bridge__search_graph_edges, mcp__temporal-bridge__search_with_filters, mcp__temporal-bridge__find_component_docs, mcp__temporal-bridge__ingest_documentation
+allowed-tools: mcp__temporal-bridge__search_graph_nodes, mcp__temporal-bridge__search_graph_edges, mcp__temporal-bridge__search_with_filters, mcp__temporal-bridge__find_component_docs, mcp__temporal-bridge__ingest_documentation, Task, Glob, Read, Bash
 ---
 
 # TemporalBridge Architecture Bootstrap
@@ -39,11 +39,12 @@ Initialize complete architecture documentation for this project by analyzing the
 ### **Phase 2: Documentation Generation**
 ```markdown
 1. Create docs/architecture/ and docs/adr/ folder structures
-2. Generate summary documents using consistent naming:
+2. Use temporal-bridge-doc-generator agent to create documentation:
    - c4-level1-context.md (system overview)
    - c4-level2-container.md (all containers in this system) 
    - c4-level3-{container-name}.md (components per container)
-3. Create initial ADRs documenting major technology and architectural decisions
+3. Generate initial ADRs documenting major technology and architectural decisions
+4. Pass discovered architectural context to doc generator for intelligent content creation
 
 IMPORTANT: Bootstrap generates ONLY summary documents. Detailed expansions are created manually when needed.
 Do NOT generate C4 Level 4 (Code) documentation during bootstrap.
@@ -129,191 +130,47 @@ c4-level{N}[-{container-name}].md
 - **Consistent hierarchical naming** for future expansion compatibility
 
 
-## Documentation Templates
+## Documentation Generator Agent Integration
 
-### **C4 Level 1 Context Template**
+### **Agent-Based Documentation Generation**
+
+Bootstrap uses the **temporal-bridge-doc-generator** agent to create all documentation with embedded templates and intelligent content generation.
+
+#### **Agent Benefits**
+- **Consistent Templates**: All C4 levels use standardized embedded templates
+- **Schema Compliance**: Automatic Zep entity schema validation
+- **Intelligent Content**: Context-aware documentation generation beyond simple templates
+- **Quality Assurance**: Built-in validation and best practices enforcement
+
+#### **Agent Communication Protocol**
 ```markdown
----
-entity_type: Architecture
-component_type: infrastructure
-c4_layer: context
-technology_stack: {{ detected_tech_stack }}
-status: active
-document_purpose: System context and external dependencies
-external_systems: {{ discovered_external_systems }}
-stakeholders: {{ identified_stakeholders }}
----
-
-# {{ project_name }} System Context
-
-## System Purpose
-Brief 1-2 sentence description of what this system does and its primary business value.
-
-## Key External Systems
-List 3-5 major external systems this system interacts with:
-- **System Name** - Brief interaction description
-- **System Name** - Brief interaction description
-
-## System Boundaries
-### **What This System Does**
-- 3-4 bullet points of core responsibilities
-- Keep each point to one line
-
-### **What This System Does NOT Do** 
-- 2-3 bullet points of explicit non-responsibilities
-- Dependencies handled by external systems
-
-## Context Diagram
-```mermaid
-C4Context
-    title System Context for {{ project_name }}
-    
-    Person(users, "Users", "Primary user description")
-    System(main_system, "{{ project_name }}", "Core system purpose")
-    System_Ext(external1, "External System", "Integration purpose")
-    
-    Rel(users, main_system, "Uses")
-    Rel(main_system, external1, "Integrates with")
-```
+1. **Project Analysis**: Bootstrap analyzes codebase and detects architectural patterns
+2. **Context Preparation**: Prepare architectural context for agent consumption
+3. **Agent Invocation**: Call doc-generator with specific C4 level and context
+4. **Content Generation**: Agent uses embedded templates with intelligent substitution
+5. **File Creation**: Write generated content to appropriate documentation files
 ```
 
-### **C4 Level 2 Container Template**
-```markdown
----
-entity_type: Architecture
-component_type: system
-c4_layer: container
-technology_stack: {{ detected_tech_stack }}
-status: active
-document_purpose: Container architecture and internal components
-containers: {{ major_containers }}
----
+#### **Generated Documentation Types**
+- **C4 Level 1 (Context)**: System boundaries and external relationships
+- **C4 Level 2 (Container)**: Internal container architecture
+- **C4 Level 3 (Component)**: Component breakdown per container
+- **ADRs**: Architecture Decision Records for technology choices
 
-# {{ project_name }} Container Architecture
-
-## Container Overview
-Brief 1-2 sentence description of the overall container architecture approach.
-
-## Primary Containers
-List 3-6 major containers in the system:
-
-### **{{ Container_Name }}**
-- **Technology**: Primary technology stack
-- **Purpose**: Single line description of responsibility
-- **Key Functions**: 2-3 bullet points of main capabilities
-
-### **{{ Container_Name }}**
-- **Technology**: Primary technology stack  
-- **Purpose**: Single line description of responsibility
-- **Key Functions**: 2-3 bullet points of main capabilities
-
-## Container Diagram
-```mermaid
-C4Container
-    title Container Diagram for {{ project_name }}
-    
-    Person(users, "Users", "User description")
-    
-    Container_Boundary(system, "{{ project_name }}") {
-        Container(container1, "Container Name", "Technology", "Purpose")
-        Container(container2, "Container Name", "Technology", "Purpose")
-    }
-    
-    ContainerDb(database, "Database", "Technology", "Data storage")
-    
-    Rel(users, container1, "Interacts with")
-    Rel(container1, container2, "Calls")
-    Rel(container2, database, "Reads/writes")
-```
-```
-
-### **C4 Level 3 Component Template (Summary)**
-```markdown
----
-entity_type: Architecture
-component_type: {{ container_type }}
-c4_layer: component
-technology_stack: {{ detected_tech_stack }}
-status: active
-document_purpose: Component summary for {{ container_name }} container
----
-
-# {{ container_name }} Container Components
-
-## Component Overview
-Brief 1-2 sentence description of this container's component architecture.
-
-## Architectural Components (4-8 major components)
-List major architectural components (NOT individual classes/files):
-
-### **{{ Component_Name }}**
-- **Responsibility**: Single line description
-- **Technology**: Implementation technology
-- **Interfaces**: What it provides to other components
-
-### **{{ Component_Name }}**
-- **Responsibility**: Single line description
-- **Technology**: Implementation technology  
-- **Interfaces**: What it provides to other components
-
-## Component Diagram
-```mermaid
-C4Component
-    title {{ container_name }} Components
-    
-    Container_Boundary(container, "{{ container_name }}") {
-        Component(comp1, "Component Name", "Technology", "Purpose")
-        Component(comp2, "Component Name", "Technology", "Purpose")
-    }
-    
-    ComponentDb(data, "Data Store", "Technology", "Data access")
-    
-    Rel(comp1, comp2, "Uses")
-    Rel(comp2, data, "Stores/retrieves")
-```
-
-## Component Interactions
-Brief 2-3 sentence description of how components work together.
-```
-
-### **ADR Template for Technology Decisions**
-```markdown
----
-entity_type: ArchitectureDecision
-decision_title: "{{ technology_choice }} Selection"
-status: accepted
-decision_date: {{ current_date }}
-impact_scope: system-wide
-technology_stack: {{ specific_technologies }}
-decision_topic: technology_selection
----
-
-# ADR-{{ number }}: {{ technology_choice }} Selection
-
-## Status
-**Accepted** - {{ date }}
-
-## Context
-Brief 1-2 sentence description of why this technology decision was needed.
-
-## Decision
-We will use {{ technology_choice }} for {{ use_case }}.
-
-## Rationale
-List 2-4 key reasons for this choice:
-- **Reason 1**: Brief explanation
-- **Reason 2**: Brief explanation
-- **Reason 3**: Brief explanation
-
-## Consequences
-### Positive
-- 2-3 benefits of this decision
-
-### Trade-offs
-- 1-2 limitations or costs accepted
-
-## Review Criteria
-This decision should be reviewed if {{ review_conditions }}.
+#### **Context Data Passed to Agent**
+```yaml
+project_analysis:
+  name: "detected_project_name"
+  technology_stack: ["detected", "technologies"]
+  containers: ["identified", "containers"]
+  external_systems: ["discovered", "dependencies"]
+  architectural_patterns: ["patterns", "found"]
+  
+generation_request:
+  c4_layer: "context|container|component"
+  document_type: "architecture|adr"
+  container_name: "specific_container" # for Level 3 only
+  component_details: [...] # detected components
 ```
 
 ## C4 Level Guidance by Project Type

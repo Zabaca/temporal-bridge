@@ -8,7 +8,7 @@ containers:
   - TemporalBridge CLI
   - MCP Server
   - Claude Code Hook
-  - Bootstrap Command
+  - Documentation Automation
   - Session Cache
   - Configuration
 ---
@@ -33,7 +33,7 @@ flowchart TB
         
         HOOK[🪝 Claude Code Hook<br/>File-based integration<br/>Automatically captures Claude Code<br/>conversations and stores them in user graph]
         
-        BOOTSTRAP[⚡ Bootstrap Command<br/>Claude Code slash command<br/>Initializes architecture documentation<br/>for new projects using C4 methodology]
+        DOC_AUTOMATION[📋 Documentation Automation<br/>Claude Code slash commands<br/>/bootstrap: Initialize architecture docs<br/>/doc-sync: Automated maintenance updates]
         
         CACHE[(💾 Session Cache<br/>YAML files<br/>Caches project entities, technology<br/>detection results, and session metadata)]
         
@@ -45,7 +45,7 @@ flowchart TB
     DEV <-->|"Uses directly<br/>CLI commands"| CLI
     CLAUDE <-->|"Calls<br/>MCP protocol, stdio transport"| MCP
     CLAUDE -.->|"Triggers<br/>Conversation hooks"| HOOK
-    CLAUDE <-->|"Executes<br/>Slash commands"| BOOTSTRAP
+    CLAUDE <-->|"Executes<br/>Slash commands"| DOC_AUTOMATION
     
     %% Internal Relationships - API Calls
     CLI <-->|"Stores/searches<br/>REST API"| ZEP
@@ -74,7 +74,7 @@ flowchart TB
     classDef person fill:#08427b,stroke:#052e56,stroke-width:2px,color:#fff
     classDef database fill:#2e7d32,stroke:#1b5e20,stroke-width:2px,color:#fff
     
-    class CLI,MCP,HOOK,BOOTSTRAP container
+    class CLI,MCP,HOOK,DOC_AUTOMATION container
     class CLAUDE,ZEP,GIT,FS external
     class DEV person
     class CACHE,CONFIG database

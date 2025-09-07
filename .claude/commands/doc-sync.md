@@ -36,12 +36,13 @@ Automatically analyzes recent commits and syncs architecture documentation based
 4. Agent provides specific update recommendations and priority levels
 ```
 
-### **Phase 3: Documentation Updates**
+### **Phase 3: Documentation Operations**
 ```markdown
-1. Apply agent recommendations to documentation files
-2. Update affected C4 diagrams and component relationships
-3. Create new ADRs if major architectural decisions detected
-4. Maintain schema compliance and consistency
+1. Process CREATE operations for new documentation files
+2. Process UPDATE operations for existing documentation files
+3. Update affected C4 diagrams and component relationships
+4. Create new ADRs if major architectural decisions detected
+5. Maintain schema compliance and consistency across all operations
 ```
 
 ### **Phase 4: Knowledge Graph Sync**
@@ -84,10 +85,43 @@ git commit -m "Add new authentication service"
 - **Relationship Changes**: Component interactions, data flow modifications
 - **Scale Assessment**: Minor updates vs. major architectural shifts
 
-### **Agent Integration**
-- **Structured Prompting**: Pass commit summary, file changes, and current documentation state
-- **Recommendation Processing**: Parse agent output for specific file updates needed
-- **Priority Handling**: Execute high-priority updates first, queue lower-priority items
+### **Multi-Agent Integration**
+
+#### **Architecture Agent Integration**
+- **Structured Prompting**: Pass git commit analysis to temporal-bridge-architecture-agent
+- **Detection Logic**: Agent identifies CREATE vs UPDATE needs using component detection triggers
+- **Recommendation Processing**: Parse agent output for specific CREATE/UPDATE operations with priorities
+- **Context Extraction**: Extract architectural context, technology stacks, and component relationships
+
+#### **Documentation Generator Agent Integration** 
+- **CREATE Operations**: Use temporal-bridge-doc-generator agent for new documentation generation
+- **Context Passing**: Provide architectural analysis, component details, and technology stack
+- **Template Processing**: Agent uses embedded templates with intelligent content generation
+- **Schema Validation**: Agent ensures Zep entity compliance in all generated documentation
+- **File Generation**: Agent produces complete, ready-to-write documentation content
+
+### **Documentation Operation Types**
+
+#### **CREATE Operations (New Documentation)**
+- **Agent-Generated Content**: Use temporal-bridge-doc-generator agent for intelligent documentation creation
+- **Context-Aware Generation**: Pass architectural context to agent for tailored content
+- **Schema Compliance**: Agent ensures proper YAML frontmatter and entity validation
+- **Intelligent Diagrams**: Agent creates contextual Mermaid diagrams based on architectural understanding
+
+#### **UPDATE Operations (Existing Documentation)**  
+- **Content Modification**: Edit existing documentation files based on agent recommendations
+- **Diagram Updates**: Modify existing Mermaid diagrams with new relationships
+- **Schema Updates**: Update YAML frontmatter with new technology stacks or status changes
+- **Cross-Reference Updates**: Update references in related documents
+
+#### **Operation Processing Logic**
+1. **Parse Architecture Agent Recommendations**: Extract CREATE vs UPDATE operations from architecture agent
+2. **Priority Execution**: Process HIGH priority CREATE operations first
+3. **Doc Generator Integration**: Use temporal-bridge-doc-generator agent for CREATE operations
+4. **Context Passing**: Provide architectural context, technology stack, and component details to doc generator
+5. **File Operations**: Write generated content to specified file paths
+6. **Update Operations**: Handle existing file modifications using standard edit operations
+7. **Validation**: Ensure all operations maintain C4 methodology and schema compliance
 
 ### **Documentation Update Strategies**
 - **C4 Diagram Updates**: Modify container/component relationships based on code changes
@@ -105,15 +139,17 @@ git commit -m "Add new authentication service"
 
 ### **Automation Effectiveness**
 - [ ] **Commit Detection**: Successfully identifies architectural changes from git commits
-- [ ] **Agent Integration**: Architecture agent provides actionable documentation recommendations
-- [ ] **Update Accuracy**: Documentation changes accurately reflect code modifications
-- [ ] **Knowledge Graph Sync**: All updates successfully ingested and searchable
+- [ ] **Agent Integration**: Architecture agent provides actionable CREATE/UPDATE recommendations
+- [ ] **Operation Accuracy**: Both CREATE and UPDATE operations accurately reflect code modifications
+- [ ] **Component Detection**: New containers and complexity growth automatically trigger Level 3 docs
+- [ ] **Knowledge Graph Sync**: All created and updated documents successfully ingested and searchable
 
 ### **Documentation Quality**
-- [ ] **Schema Compliance**: All updated documents maintain proper YAML frontmatter
-- [ ] **Consistency**: Cross-document references remain accurate after updates
-- [ ] **Completeness**: No architectural changes left undocumented
-- [ ] **Timeliness**: Documentation updated immediately after commits
+- [ ] **Schema Compliance**: All created and updated documents maintain proper YAML frontmatter
+- [ ] **Template Consistency**: New Level 3 docs follow bootstrap template standards
+- [ ] **Cross-Reference Accuracy**: References between documents remain accurate after operations
+- [ ] **Completeness**: No architectural changes left undocumented (both new and existing)
+- [ ] **Timeliness**: Documentation created and updated immediately after commits
 
 ### **Developer Experience**
 - [ ] **Single Command**: Complete sync accomplished with `/doc-sync`
@@ -129,11 +165,26 @@ git commit -m "Add new authentication service"
 - Handle merge commits and multi-file changes appropriately
 - Support both single commit and commit range analysis
 
-### **Agent Communication**
-- Structure commit analysis data for optimal agent consumption  
-- Process agent recommendations into actionable file operations
-- Handle agent errors and fallback to manual documentation review
-- Maintain conversation context for follow-up questions
+### **Multi-Agent Communication Workflow**
+
+#### **Architecture Agent Communication**
+- **Input**: Git commit analysis (files, changes, technology detection)
+- **Process**: Agent analyzes architectural impact and detects documentation needs
+- **Output**: CREATE/UPDATE recommendations with priorities and context
+- **Error Handling**: Fallback to manual documentation analysis if agent fails
+
+#### **Documentation Generator Agent Communication**
+- **Trigger**: When CREATE operations are identified by architecture agent
+- **Input**: Architectural context, component details, technology stack, C4 layer specification
+- **Process**: Agent generates complete documentation using embedded templates
+- **Output**: Ready-to-write documentation content with proper schema compliance
+- **Validation**: Verify generated content meets quality and schema requirements
+
+#### **Agent Coordination**
+- **Sequential Processing**: Architecture detection → Documentation generation → File operations
+- **Context Preservation**: Pass relevant context between agents for consistency
+- **Error Recovery**: Graceful degradation if any agent in chain fails
+- **Result Validation**: Verify each agent output before proceeding to next phase
 
 ### **File Operation Safety**
 - Backup documentation files before automated updates

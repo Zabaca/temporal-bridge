@@ -30,6 +30,9 @@ flowchart TB
         %% Bootstrap System
         BOOTSTRAP_PROCESSOR[⚡ Bootstrap Command Processor<br/>Slash Command Handler<br/>Processes /bootstrap commands with<br/>3-phase architecture initialization]
         
+        %% Doc-Sync System
+        DOCSYNC_PROCESSOR[🔄 Doc-Sync Command Processor<br/>Slash Command Handler<br/>Processes /doc-sync commands with<br/>4-phase automated documentation updates]
+        
         TEMPLATE_ENGINE[📝 Template Engine<br/>YAML + Markdown Processor<br/>Processes C4 and ADR templates<br/>with placeholder variable substitution]
         
         DOC_GENERATOR[📄 Documentation Generator<br/>File System Writer<br/>Creates docs/architecture/ and docs/adr/<br/>folders with schema-compliant content]
@@ -48,10 +51,12 @@ flowchart TB
     
     %% User Interactions
     DEV -->|"Executes /bootstrap"| CLAUDE_CORE
+    DEV -->|"Executes /doc-sync"| CLAUDE_CORE
     DEV -.->|"Conversations captured"| CLAUDE_CORE
     
     %% Claude Code Core Interactions
     CLAUDE_CORE <-->|"Slash command routing"| BOOTSTRAP_PROCESSOR
+    CLAUDE_CORE <-->|"Slash command routing"| DOCSYNC_PROCESSOR
     CLAUDE_CORE -.->|"Conversation hooks"| HOOK_HANDLER
     CLAUDE_CORE <-->|"MCP protocol calls"| MCP_CLIENT
     
@@ -60,6 +65,12 @@ flowchart TB
     BOOTSTRAP_PROCESSOR <--> TEMPLATE_ENGINE
     BOOTSTRAP_PROCESSOR <--> DOC_GENERATOR
     BOOTSTRAP_PROCESSOR <--> MCP_CLIENT
+    
+    %% Internal Doc-Sync Flow
+    DOCSYNC_PROCESSOR <--> MCP_CLIENT
+    DOCSYNC_PROCESSOR -.->|"Git analysis"| FILE_SYSTEM
+    DOCSYNC_PROCESSOR <--> DOC_GENERATOR
+    DOCSYNC_PROCESSOR -.->|"Agent coordination"| TB_MCP_SERVER
     
     %% Template Processing Flow
     TEMPLATE_ENGINE -.->|"Reads templates"| FILE_SYSTEM
