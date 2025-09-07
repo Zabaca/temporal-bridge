@@ -31,7 +31,7 @@ Shows TemporalBridge in its broader ecosystem:
 
 Shows the main technical containers:
 - **CLI Application** (Node.js/NestJS) - Direct command-line interface
-- **MCP Server** (Node.js/NestJS) - Provides 11 memory tools to Claude Code
+- **MCP Server** (Node.js/NestJS) - Provides 15 memory tools to Claude Code
 - **Hook System** - Automatically captures conversations
 - **Session Cache** (YAML files) - Caches project entities and detection results
 - **Configuration** (JSON/YAML) - MCP and environment settings
