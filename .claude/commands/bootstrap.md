@@ -1,6 +1,6 @@
 ---
 description: Bootstrap TemporalBridge architecture documentation for new projects
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-20250514
 allowed-tools: mcp__temporal-bridge__search_graph_nodes, mcp__temporal-bridge__search_graph_edges, mcp__temporal-bridge__search_with_filters, mcp__temporal-bridge__find_component_docs, mcp__temporal-bridge__ingest_documentation, Task, Glob, Read, Bash
 ---
 

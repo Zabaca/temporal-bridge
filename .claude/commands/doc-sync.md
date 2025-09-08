@@ -1,6 +1,6 @@
 ---
 description: Analyze recent commit and sync architecture documentation automatically
-model: claude-3-5-sonnet-20241022
+model: claude-sonnet-4-20250514
 allowed-tools: mcp__temporal-bridge__search_graph_nodes, mcp__temporal-bridge__search_graph_edges, mcp__temporal-bridge__search_with_filters, mcp__temporal-bridge__find_component_docs, mcp__temporal-bridge__ingest_documentation, Task, Bash, Read, Write, Edit, MultiEdit, Glob, Grep
 argument-hint: [commit-hash]
 ---
@@ -40,21 +40,37 @@ Automatically analyzes recent commits and syncs architecture documentation based
 ```markdown
 1. Process CREATE operations for new documentation files
 2. Process UPDATE operations for existing documentation files
-3. Update affected C4 diagrams and component relationships
-4. Create new ADRs if major architectural decisions detected
-5. Maintain schema compliance and consistency across all operations
+3. Process RESTRUCTURE operations for oversized or over-complex documents
+4. Update affected C4 diagrams and component relationships
+5. Create new ADRs if major architectural decisions detected
+6. Maintain schema compliance and consistency across all operations
+```
+
+### **Phase 3.5: Pre-Ingestion Validation**
+```markdown
+1. Size validation - Check documents approaching 10,000 character limit
+2. Component density analysis - Flag documents with 5+ components
+3. Schema compliance verification - Validate YAML frontmatter completeness
+4. Cross-reference validation - Ensure document consistency
+5. Generate validation warnings for problematic documents
 ```
 
 ### **Phase 4: Knowledge Graph Sync**
 ```markdown
 1. Identify all updated/created documentation files
 2. Read each file using Read tool to get agent-generated content
-3. Re-ingest documents using mcp__temporal-bridge__ingest_documentation with read content
-4. Verify successful ingestion and searchability
-5. Report sync completion status
+3. Pre-validate content before ingestion (size, schema, references)
+4. Re-ingest documents using mcp__temporal-bridge__ingest_documentation with read content
+5. Handle ingestion failures with clear error reporting
+6. Verify successful ingestion and searchability
+7. Report sync completion status with validation warnings
 ```
 
-**Critical Rule**: Always read the agent-generated file and pass its exact content to the ingestion tool. Never manually rewrite or recreate the content during ingestion.
+**Critical Rules**:
+- Always read the agent-generated file and pass its exact content to the ingestion tool
+- Never manually rewrite or recreate the content during ingestion
+- Validate document quality before attempting ingestion
+- Report clear errors and suggestions for failed ingestions
 
 ## Usage Patterns
 
@@ -92,8 +108,9 @@ git commit -m "Add new authentication service"
 
 #### **Architecture Agent Integration**
 - **Structured Prompting**: Pass git commit analysis to temporal-bridge-architecture-agent
-- **Detection Logic**: Agent identifies CREATE vs UPDATE needs using component detection triggers
-- **Recommendation Processing**: Parse agent output for specific CREATE/UPDATE operations with priorities
+- **Enhanced Detection Logic**: Agent uses 6 detection triggers (4 architectural + 2 quality)
+- **Recommendation Processing**: Parse agent output for CREATE/UPDATE/RESTRUCTURE operations with priorities
+- **Quality Analysis**: Agent validates document size, component density, and abstraction compliance
 - **Context Extraction**: Extract architectural context, technology stacks, and component relationships
 
 #### **Documentation Generator Agent Integration** 
@@ -117,9 +134,16 @@ git commit -m "Add new authentication service"
 - **Schema Updates**: Update YAML frontmatter with new technology stacks or status changes
 - **Cross-Reference Updates**: Update references in related documents
 
+#### **RESTRUCTURE Operations (Document Quality Issues)**
+- **Size Remediation**: Split oversized documents (8k+ chars) into focused functional areas
+- **Component Density Reduction**: Break documents with 5+ components into cohesive groups
+- **Abstraction Compliance**: Ensure Level 3 docs focus on functional areas, not entire containers
+- **Multiple Document Creation**: Use doc generator agent to create focused replacement documents
+- **Reference Updates**: Update Level 2 containers and cross-references to new document structure
+
 #### **Operation Processing Logic**
-1. **Parse Architecture Agent Recommendations**: Extract CREATE vs UPDATE operations from architecture agent
-2. **Priority Execution**: Process HIGH priority CREATE operations first
+1. **Parse Architecture Agent Recommendations**: Extract CREATE/UPDATE/RESTRUCTURE operations from architecture agent
+2. **Priority Execution**: Process HIGH priority operations first (RESTRUCTURE → CREATE → UPDATE)
 3. **Doc Generator Integration**: Use temporal-bridge-doc-generator agent for CREATE operations
 4. **Context Passing**: Provide architectural context, technology stack, and component details to doc generator
 5. **File Operations**: Write generated content to specified file paths

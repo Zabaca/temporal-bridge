@@ -11,6 +11,13 @@ containers:
   - Documentation Automation
   - Session Cache
   - Configuration
+level3_documents:
+  - c4-level3-conversation-hook-system.md
+  - c4-level3-bootstrap-command-system.md
+  - c4-level3-doc-sync-command-system.md
+  - c4-level3-mcp-integration-system.md
+  - c4-level3-multi-agent-documentation-system.md
+  - c4-level3-agent-template-processing.md
 ---
 
 ```mermaid
@@ -33,7 +40,7 @@ flowchart TB
         
         HOOK[🪝 Claude Code Hook<br/>File-based integration<br/>Automatically captures Claude Code<br/>conversations and stores them in user graph]
         
-        DOC_AUTOMATION[📋 Documentation Automation<br/>Claude Code slash commands<br/>/bootstrap: Initialize architecture docs<br/>/doc-sync: Automated maintenance updates]
+        DOC_AUTOMATION[📋 Documentation Automation<br/>Claude Code slash commands & multi-agent system<br/>/bootstrap: Initialize architecture docs<br/>/doc-sync: Multi-agent documentation sync<br/>Agent coordination & content preservation]
         
         CACHE[(💾 Session Cache<br/>YAML files<br/>Caches project entities, technology<br/>detection results, and session metadata)]
         
@@ -98,11 +105,14 @@ flowchart TB
 - **`search_with_filters`** - Advanced search with edge type filters
 - **`find_component_docs`** - Find documentation for architectural components
 
-## Architecture Bootstrap Integration
-- **Slash command interface** - `/bootstrap` command in Claude Code
+## Documentation Automation Integration
+- **Multi-agent coordination** - Architecture agent → Doc generator → File operations
+- **Slash command interface** - `/bootstrap` and `/doc-sync` commands in Claude Code
 - **Template-driven initialization** - C4 methodology with entity schemas
+- **Agent-based content generation** - Embedded templates with intelligent processing
 - **Documentation structure creation** - `docs/architecture/` and `docs/adr/` folders
 - **Mermaid diagram generation** - Visual architecture representations
+- **Content preservation** - Never rewrite agent-generated documentation
 - **Knowledge graph integration** - Auto-ingestion of generated documentation
 
 ## Automatic Hook Capture
