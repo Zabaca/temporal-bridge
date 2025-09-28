@@ -134,21 +134,41 @@ export class TemporalBridgeToolsService {
     }),
   })
   async getRecentEpisodes(input: { limit?: number }) {
-    const results = await this.memoryTools.searchMemory(
-      '*', // Search all
-      'episodes',
-      input.limit || 10,
-    );
+    try {
+      // Use Zep's native episode API to get truly recent episodes chronologically
+      const episodeResponse = await this.zepService.graph.episode.getByUserId(
+        this.zepService.userId,
+        { lastn: input.limit || 10 }
+      );
 
-    return {
-      episodes: results.map((r) => ({
-        content: r.content,
-        score: r.score,
-        timestamp: r.created_at,
-        metadata: r.metadata,
-      })),
-      count: results.length,
-    };
+      const episodes = episodeResponse.episodes || [];
+
+      return {
+        episodes: episodes.map((episode: any) => ({
+          content: episode.content || '',
+          score: 1.0, // Recent episodes have high relevance
+          timestamp: episode.createdAt || new Date().toISOString(),
+          metadata: {
+            scope: 'episodes',
+            uuid: episode.uuid,
+            processed: episode.processed,
+            role_type: episode.roleType,
+            source: episode.source,
+            session_id: episode.sessionId,
+            thread_id: episode.threadId,
+          },
+        })),
+        count: episodes.length,
+      };
+    } catch (error) {
+      console.error('Error fetching recent episodes:', error);
+      // Fallback to empty result on error
+      return {
+        episodes: [],
+        count: 0,
+        error: `Failed to fetch recent episodes: ${(error as Error).message}`,
+      };
+    }
   }
 
   @Tool({

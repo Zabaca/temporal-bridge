@@ -3,8 +3,7 @@ import os from 'node:os';
 import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { Command, CommandRunner, Option } from 'nest-commander';
-import { detectProject, ProjectEntitiesService, SessionManager, ZepService } from '../lib';
-import type { ProjectContext } from '../lib/project-detector';
+import { detectProject, ProjectEntitiesService, SessionManager, ZepService, type ProjectContext } from '../lib';
 import type { HookData, ParsedMessage, TranscriptMessage } from '../lib/types';
 
 interface StoreConversationOptions {
@@ -81,7 +80,13 @@ export class StoreConversationCommand extends CommandRunner {
     const limitedMessages = this.limitTransactionMessages(transactionMessages);
 
     if (limitedMessages.length > 0) {
-      await this.storeMessagesInZep(limitedMessages, context.threadId, hookData.session_id, context.userId);
+      await this.storeMessagesInZep(
+        limitedMessages,
+        context.threadId,
+        hookData.session_id,
+        context.userId,
+        context.projectContext
+      );
     }
   }
 
@@ -121,7 +126,13 @@ export class StoreConversationCommand extends CommandRunner {
     }
   }
 
-  private async storeMessagesInZep(messages: ParsedMessage[], threadId: string, sessionId: string, userId: string) {
+  private async storeMessagesInZep(
+    messages: ParsedMessage[],
+    threadId: string,
+    sessionId: string,
+    userId: string,
+    projectContext: ProjectContext
+  ) {
     // Ensure user exists before creating thread or adding messages
     await this.zepService.ensureUser(userId);
 
@@ -154,9 +165,23 @@ export class StoreConversationCommand extends CommandRunner {
       }
     }
 
+    // Add project metadata to large messages stored via graph.add
+    const metadata = {
+      projectId: projectContext.projectId,
+      projectName: projectContext.projectName,
+      sessionId: sessionId,
+      threadId: threadId,
+      timestamp: new Date().toISOString(),
+    };
+
     for (const msg of largeMessages) {
-      await this.zepService.graph.add({ userId, type: 'message', data: `${msg.name}: ${msg.content}` });
-      console.log(`✅ Sent large message (${msg.content.length} chars) to user graph`);
+      await this.zepService.graph.add({
+        userId,
+        type: 'message',
+        data: `${msg.name}: ${msg.content}`,
+        sourceDescription: JSON.stringify(metadata),
+      });
+      console.log(`✅ Sent large message (${msg.content.length} chars) to user graph with project metadata`);
       if (msg.uuid) {
         storedUuids.add(msg.uuid);
       }
