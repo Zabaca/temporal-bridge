@@ -379,6 +379,96 @@ export class TemporalBridgeToolsService {
   }
 
   @FilteredTool({
+    name: 'list_sessions',
+    description: 'List all Claude Code session IDs for the current developer',
+    parameters: z.object({
+      limit: z.number().optional().default(10).describe('Maximum number of sessions to return (default: 10)'),
+    }),
+  })
+  async listSessions(input: { limit?: number }) {
+    try {
+      await this.zepService.ensureUser();
+
+      // Get all threads for the developer user
+      const threads = await this.zepService.user.getThreads(this.zepService.userId);
+
+      // Filter for claude-code threads and extract session IDs
+      const claudeCodeSessions = threads
+        .filter((t) => t.threadId && t.threadId.startsWith('claude-code-'))
+        .map((t) => ({
+          session_id: t.threadId!.replace('claude-code-', ''),
+          thread_id: t.threadId!,
+          created_at: t.createdAt,
+        }));
+
+      // Apply limit
+      const limit = input.limit || 10;
+      const limitedSessions = claudeCodeSessions.slice(0, limit);
+
+      return {
+        success: true,
+        sessions: limitedSessions,
+        count: limitedSessions.length,
+        total: claudeCodeSessions.length,
+        user_id: this.zepService.userId,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Error listing sessions:', error);
+      return {
+        success: false,
+        error: `Failed to list sessions: ${(error as Error).message}`,
+        sessions: [],
+        count: 0,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  @FilteredTool({
+    name: 'get_session_context',
+    description: 'Get context for a specific session ID',
+    parameters: z.object({
+      session_id: z.string().describe('Session ID (e.g., c95ec092-2c4f-414f-9221-3fe579e066ac)'),
+    }),
+  })
+  async getSessionContext(input: { session_id: string }) {
+    try {
+      // Convert session ID to thread ID
+      const threadId = `claude-code-${input.session_id}`;
+
+      // Ensure user and thread exist
+      await this.zepService.ensureUser();
+      await this.zepService.ensureThread(threadId);
+
+      // Get context using getUserContext API
+      const threadContext = await this.zepService.thread.getUserContext(threadId, {
+        mode: 'basic',
+      });
+
+      const contextBlock = threadContext?.context || 'No context available for this session';
+
+      return {
+        success: true,
+        session_id: input.session_id,
+        thread_id: threadId,
+        context_block: contextBlock,
+        user_id: this.zepService.userId,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Error getting session context:', error);
+      return {
+        success: false,
+        session_id: input.session_id,
+        thread_id: `claude-code-${input.session_id}`,
+        error: `Failed to get session context: ${(error as Error).message}`,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  @FilteredTool({
     name: 'get_thread_context',
     description: 'Get comprehensive context summary for a specific Claude Code conversation thread',
     parameters: z.object({
