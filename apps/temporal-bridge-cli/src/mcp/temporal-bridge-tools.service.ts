@@ -278,11 +278,71 @@ export class TemporalBridgeToolsService {
 
   @FilteredTool({
     name: 'project_context',
-    description: 'Get current project context and entity information',
-    parameters: z.object({}),
+    description: 'Get project-level context from shared knowledge graph',
+    parameters: z.object({
+      query: z
+        .string()
+        .optional()
+        .describe('Search query for relevant context (default: "project architecture patterns decisions")'),
+      limit: z.number().optional().default(10).describe('Maximum number of facts/entities to return (default: 10)'),
+    }),
   })
-  async projectContext() {
-    return await this.getCurrentContext();
+  async projectContext(input: { query?: string; limit?: number }) {
+    try {
+      // Get current project information
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+
+      if (!projectContext.success || !projectContext.project) {
+        return {
+          success: false,
+          error: 'No project context available',
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      const graphId = `project-${projectContext.project.projectId}`;
+      const query = input.query || 'project architecture patterns decisions';
+      const limit = input.limit || 10;
+
+      // Search project graph for relevant facts (edges)
+      const edgeResults = await this.zepService.graph.search({
+        graphId,
+        query,
+        scope: Zep.GraphSearchScope.Edges,
+        limit,
+        reranker: Zep.Reranker.CrossEncoder,
+      });
+
+      // Search project graph for relevant entities (nodes)
+      const nodeResults = await this.zepService.graph.search({
+        graphId,
+        query,
+        scope: Zep.GraphSearchScope.Nodes,
+        limit: Math.floor(limit / 2), // Fewer nodes, more facts
+        reranker: Zep.Reranker.CrossEncoder,
+      });
+
+      // Build context block from search results
+      const contextBlock = this.buildContextBlock(edgeResults.edges || [], nodeResults.nodes || []);
+
+      return {
+        success: true,
+        project: projectContext.project,
+        graph_id: graphId,
+        query,
+        context_block: contextBlock,
+        facts_count: edgeResults.edges?.length || 0,
+        entities_count: nodeResults.nodes?.length || 0,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Error getting project context:', error);
+      return {
+        success: false,
+        error: `Failed to get project context: ${(error as Error).message}`,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 
   @FilteredTool({
@@ -1249,5 +1309,37 @@ export class TemporalBridgeToolsService {
       results: [],
       count: 0,
     };
+  }
+
+  private buildContextBlock(edges: Zep.EntityEdge[], nodes: Zep.EntityNode[]): string {
+    const formatFact = (edge: Zep.EntityEdge): string => {
+      const validAt = edge.validAt ?? 'date unknown';
+      const invalidAt = edge.invalidAt ?? 'present';
+      return `  - ${edge.fact} (${validAt} - ${invalidAt})`;
+    };
+
+    const formatEntity = (node: Zep.EntityNode): string => {
+      const name = node.name || 'Unknown Entity';
+      const summary = node.summary || 'No summary available';
+      return `  - Name: ${name}\n    Summary: ${summary}`;
+    };
+
+    const facts = edges.map(formatFact).join('\n');
+    const entities = nodes.map(formatEntity).join('\n');
+
+    return `
+FACTS and ENTITIES represent relevant context from the project knowledge graph.
+
+# These are the most relevant facts and their valid date ranges
+# format: FACT (Date range: from - to)
+<FACTS>
+${facts || '  - No facts found'}
+</FACTS>
+
+# These are the most relevant entities
+<ENTITIES>
+${entities || '  - No entities found'}
+</ENTITIES>
+`;
   }
 }
