@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { MemorySearchResult, MemoryToolsService, ProjectEntitiesService, Zep, ZepService } from '../lib';
+import { FilteredTool } from './decorators/filtered-tool.decorator';
 
 @Injectable()
 export class TemporalBridgeToolsService {
@@ -11,7 +11,7 @@ export class TemporalBridgeToolsService {
     private readonly zepService: ZepService,
   ) {}
 
-  @Tool({
+  @FilteredTool({
     name: 'search_personal',
     description: 'Search your personal conversation history only',
     parameters: z.object({
@@ -40,7 +40,7 @@ export class TemporalBridgeToolsService {
     };
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'search_project',
     description: 'Search shared project knowledge only',
     parameters: z.object({
@@ -90,7 +90,7 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'search_all',
     description: 'Search both personal and project memories with source labels',
     parameters: z.object({
@@ -126,7 +126,7 @@ export class TemporalBridgeToolsService {
     };
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'get_recent_episodes',
     description: 'Get recent conversation episodes for context building',
     parameters: z.object({
@@ -136,15 +136,14 @@ export class TemporalBridgeToolsService {
   async getRecentEpisodes(input: { limit?: number }) {
     try {
       // Use Zep's native episode API to get truly recent episodes chronologically
-      const episodeResponse = await this.zepService.graph.episode.getByUserId(
-        this.zepService.userId,
-        { lastn: input.limit || 10 }
-      );
+      const episodeResponse = await this.zepService.graph.episode.getByUserId(this.zepService.userId, {
+        lastn: input.limit || 10,
+      });
 
       const episodes = episodeResponse.episodes || [];
 
       return {
-        episodes: episodes.map((episode: any) => ({
+        episodes: episodes.map((episode: Zep.Episode) => ({
           content: episode.content || '',
           score: 1.0, // Recent episodes have high relevance
           timestamp: episode.createdAt || new Date().toISOString(),
@@ -155,7 +154,6 @@ export class TemporalBridgeToolsService {
             role_type: episode.roleType,
             source: episode.source,
             session_id: episode.sessionId,
-            thread_id: episode.threadId,
           },
         })),
         count: episodes.length,
@@ -171,23 +169,80 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'get_current_context',
     description: 'Get memory context for current Claude Code session',
     parameters: z.object({}),
   })
   async getCurrentContext() {
-    const projectContext = await this.projectEntities.getCurrentProjectContext();
+    try {
+      // Get project context first
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
 
-    return {
-      success: projectContext.success,
-      project: projectContext.project,
-      error: projectContext.error,
-      timestamp: new Date().toISOString(),
-    };
+      // Get current session ID and construct thread ID
+      const sessionId = await this.getSessionId();
+      if (!sessionId) {
+        return {
+          success: false,
+          error: 'No active session found',
+          project: projectContext.project,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      const threadId = `claude-code-${sessionId}`;
+
+      // Ensure user and thread exist in Zep
+      await this.zepService.ensureUser();
+      await this.zepService.ensureThread(threadId);
+
+      // Get Zep's intelligent context block for the current session
+      // Use mode: "basic" to get structured FACTS and ENTITIES format
+      const threadContext = await this.zepService.thread.getUserContext(threadId, {
+        mode: 'basic', // Get structured FACTS/ENTITIES format, not summary
+      });
+
+      // The context block contains structured FACTS and ENTITIES
+      const contextBlock = threadContext?.context || 'No context available for current session';
+
+      return {
+        success: true,
+        session_id: sessionId,
+        thread_id: threadId,
+        project: projectContext.project,
+        context_block: contextBlock, // Full structured context with FACTS/ENTITIES/EPISODES
+        user_id: this.zepService.userId,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Error getting current context:', error);
+      const projectContext = await this.projectEntities.getCurrentProjectContext();
+      return {
+        success: false,
+        project: projectContext.project,
+        error: `Failed to get current context: ${(error as Error).message}`,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 
-  @Tool({
+  private async getSessionId(): Promise<string | null> {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const yaml = await import('yaml');
+
+    try {
+      const sessionFile = path.join(process.cwd(), 'temporal-bridge.yaml');
+      const content = await fs.readFile(sessionFile, 'utf-8');
+      const sessionData = yaml.parse(content);
+      return sessionData?.sessionId || null;
+    } catch (error) {
+      console.error('❌ Error reading session file:', error);
+      return null;
+    }
+  }
+
+  @FilteredTool({
     name: 'share_knowledge',
     description: 'Share knowledge to project group graph for team collaboration',
     parameters: z.object({
@@ -205,7 +260,7 @@ export class TemporalBridgeToolsService {
     };
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'list_projects',
     description: 'List all projects you have worked on with metadata',
     parameters: z.object({}),
@@ -221,7 +276,7 @@ export class TemporalBridgeToolsService {
     };
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'project_context',
     description: 'Get current project context and entity information',
     parameters: z.object({}),
@@ -230,7 +285,7 @@ export class TemporalBridgeToolsService {
     return await this.getCurrentContext();
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'project_technologies',
     description: 'Get detailed technology breakdown for specific projects',
     parameters: z.object({
@@ -249,7 +304,7 @@ export class TemporalBridgeToolsService {
     };
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'get_technology_expertise',
     description: 'Analyze technology expertise across all projects',
     parameters: z.object({
@@ -323,7 +378,7 @@ export class TemporalBridgeToolsService {
     expertise[tech].projects.push(projectName);
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'get_thread_context',
     description: 'Get comprehensive context summary for a specific Claude Code conversation thread',
     parameters: z.object({
@@ -364,7 +419,7 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'list_entity_types',
     description: 'List all entity types available in Zep knowledge graphs',
     parameters: z.object({}),
@@ -384,7 +439,7 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'ingest_documentation',
     description: 'Ingest documentation files into the knowledge graph for automatic entity extraction',
     parameters: z.object({
@@ -428,7 +483,7 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'find_component_docs',
     description: 'Find all documentation for a specific architectural component',
     parameters: z.object({
@@ -475,19 +530,25 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'get_architecture_overview',
     description: 'Get high-level architecture overview and system design documentation',
     parameters: z.object({
       project: z.string().optional().describe('Target project name (defaults to current project)'),
-      c4_layer: z.enum(['context', 'container', 'component', 'code']).optional().describe('Specific C4 layer to focus on'),
+      c4_layer: z
+        .enum(['context', 'container', 'component', 'code'])
+        .optional()
+        .describe('Specific C4 layer to focus on'),
     }),
   })
-  async getArchitectureOverview(input: { project?: string; c4_layer?: 'context' | 'container' | 'component' | 'code' }) {
+  async getArchitectureOverview(input: {
+    project?: string;
+    c4_layer?: 'context' | 'container' | 'component' | 'code';
+  }) {
     try {
       const layerQuery = input.c4_layer ? `C4 ${input.c4_layer} layer` : 'architecture overview system design';
       const searchQuery = `${layerQuery} TemporalBridge architecture system context`;
-      
+
       const results = await this.memoryTools.searchProjectGroup(
         searchQuery,
         input.project,
@@ -523,12 +584,15 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'find_architecture_decisions',
     description: 'Find Architecture Decision Records (ADRs) and related implementation details',
     parameters: z.object({
       decision_topic: z.string().optional().describe('Specific decision topic to search for'),
-      status: z.enum(['proposed', 'accepted', 'deprecated', 'superseded']).optional().describe('Filter by decision status'),
+      status: z
+        .enum(['proposed', 'accepted', 'deprecated', 'superseded'])
+        .optional()
+        .describe('Filter by decision status'),
       project: z.string().optional().describe('Target project name (defaults to current project)'),
       limit: z.number().optional().default(5).describe('Maximum number of results to return'),
     }),
@@ -581,12 +645,15 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'search_data_models',
     description: 'Search for data model definitions, schemas, and related documentation',
     parameters: z.object({
       model_name: z.string().optional().describe('Specific data model name to search for'),
-      storage_layer: z.enum(['postgres', 'redis', 'zep', 'memory', 'file', 'api']).optional().describe('Filter by storage layer'),
+      storage_layer: z
+        .enum(['postgres', 'redis', 'zep', 'memory', 'file', 'api'])
+        .optional()
+        .describe('Filter by storage layer'),
       project: z.string().optional().describe('Target project name (defaults to current project)'),
       limit: z.number().optional().default(5).describe('Maximum number of results to return'),
     }),
@@ -639,12 +706,16 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'trace_component_dependencies',
     description: 'Trace dependencies and relationships between architectural components',
     parameters: z.object({
       component_name: z.string().describe('Component to trace dependencies for'),
-      direction: z.enum(['depends_on', 'depended_by', 'both']).optional().default('both').describe('Direction of dependencies to trace'),
+      direction: z
+        .enum(['depends_on', 'depended_by', 'both'])
+        .optional()
+        .default('both')
+        .describe('Direction of dependencies to trace'),
       project: z.string().optional().describe('Target project name (defaults to current project)'),
     }),
   })
@@ -703,7 +774,7 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'search_graph_nodes',
     description: 'Search knowledge graph entity nodes for summaries and attributes',
     parameters: z.object({
@@ -725,7 +796,11 @@ export class TemporalBridgeToolsService {
   }) {
     try {
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+      const graphId = input.project
+        ? `project-${input.project}`
+        : projectContext.project
+          ? `project-${projectContext.project.projectId}`
+          : undefined;
 
       if (!graphId) {
         throw new Error('No project context available for graph search');
@@ -735,7 +810,7 @@ export class TemporalBridgeToolsService {
         input.query,
         input.limit || 10,
         input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
-        graphId
+        graphId,
       );
 
       return {
@@ -767,7 +842,7 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'search_graph_edges',
     description: 'Search knowledge graph edges for relationships and facts',
     parameters: z.object({
@@ -794,7 +869,11 @@ export class TemporalBridgeToolsService {
   }) {
     try {
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+      const graphId = input.project
+        ? `project-${input.project}`
+        : projectContext.project
+          ? `project-${projectContext.project.projectId}`
+          : undefined;
 
       if (!graphId) {
         throw new Error('No project context available for graph search');
@@ -805,7 +884,7 @@ export class TemporalBridgeToolsService {
         input.limit || 10,
         input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder,
         graphId,
-        input.edge_types
+        input.edge_types,
       );
 
       return {
@@ -837,7 +916,7 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'get_entity_episodes',
     description: 'Find source episodes that created or mentioned a specific entity',
     parameters: z.object({
@@ -850,7 +929,11 @@ export class TemporalBridgeToolsService {
     try {
       // First search for nodes to identify relevant entities
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+      const graphId = input.project
+        ? `project-${input.project}`
+        : projectContext.project
+          ? `project-${projectContext.project.projectId}`
+          : undefined;
 
       if (!graphId) {
         throw new Error('No project context available for entity lookup');
@@ -862,7 +945,7 @@ export class TemporalBridgeToolsService {
         input.project,
         'episodes',
         input.limit || 5,
-        Zep.Reranker.CrossEncoder
+        Zep.Reranker.CrossEncoder,
       );
 
       return {
@@ -894,7 +977,7 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'get_episode_mentions',
     description: 'Get entities and relationships that were extracted from a specific episode',
     parameters: z.object({
@@ -906,7 +989,11 @@ export class TemporalBridgeToolsService {
   async getEpisodeMentions(input: { episode_query: string; project?: string; limit?: number }) {
     try {
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+      const graphId = input.project
+        ? `project-${input.project}`
+        : projectContext.project
+          ? `project-${projectContext.project.projectId}`
+          : undefined;
 
       if (!graphId) {
         throw new Error('No project context available for episode lookup');
@@ -917,14 +1004,14 @@ export class TemporalBridgeToolsService {
         `${input.episode_query} mentions entities`,
         Math.ceil((input.limit || 10) / 2),
         Zep.Reranker.CrossEncoder,
-        graphId
+        graphId,
       );
 
       const relationshipResults = await this.memoryTools.searchGraphEdges(
         `${input.episode_query} relationships facts`,
         Math.ceil((input.limit || 10) / 2),
         Zep.Reranker.CrossEncoder,
-        graphId
+        graphId,
       );
 
       return {
@@ -963,12 +1050,14 @@ export class TemporalBridgeToolsService {
     }
   }
 
-  @Tool({
+  @FilteredTool({
     name: 'search_with_filters',
     description: 'Advanced search with filters for specific relationship types and scopes',
     parameters: z.object({
       query: z.string().describe('Search query'),
-      scope: z.enum(['nodes', 'edges', 'episodes']).describe('Search scope: nodes (entities), edges (relationships), or episodes (documents)'),
+      scope: z
+        .enum(['nodes', 'edges', 'episodes'])
+        .describe('Search scope: nodes (entities), edges (relationships), or episodes (documents)'),
       project: z.string().optional().describe('Target project name (defaults to current project)'),
       edge_types: z
         .array(z.string())
@@ -992,7 +1081,11 @@ export class TemporalBridgeToolsService {
   }) {
     try {
       const projectContext = await this.projectEntities.getCurrentProjectContext();
-      const graphId = input.project ? `project-${input.project}` : (projectContext.project ? `project-${projectContext.project.projectId}` : undefined);
+      const graphId = input.project
+        ? `project-${input.project}`
+        : projectContext.project
+          ? `project-${projectContext.project.projectId}`
+          : undefined;
 
       const results = await this.performScopedSearch(input, graphId);
 
@@ -1029,7 +1122,7 @@ export class TemporalBridgeToolsService {
       limit?: number;
       reranker?: 'cross_encoder' | 'none';
     },
-    graphId: string | undefined
+    graphId: string | undefined,
   ): Promise<MemorySearchResult[]> {
     const reranker = input.reranker === 'none' ? undefined : Zep.Reranker.CrossEncoder;
     const limit = input.limit || 10;
@@ -1037,25 +1130,25 @@ export class TemporalBridgeToolsService {
     if (input.scope === 'nodes') {
       return await this.memoryTools.searchGraphNodes(input.query, limit, reranker, graphId);
     }
-    
+
     if (input.scope === 'edges') {
       return await this.memoryTools.searchGraphEdges(input.query, limit, reranker, graphId, input.edge_types);
     }
-    
+
     // episodes scope
     const episodeResults = await this.memoryTools.searchProjectGroup(
       input.query,
       input.project,
       'episodes',
       limit,
-      reranker
+      reranker,
     );
     return episodeResults || [];
   }
 
   private createErrorResponse(
     input: { query: string; scope: 'nodes' | 'edges' | 'episodes'; project?: string },
-    error: Error
+    error: Error,
   ) {
     return {
       success: false,
