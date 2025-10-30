@@ -153,7 +153,7 @@ export class TemporalBridgeToolsService {
             processed: episode.processed,
             role_type: episode.roleType,
             source: episode.source,
-            session_id: episode.sessionId,
+            thread_id: episode.threadId,
           },
         })),
         count: episodes.length,

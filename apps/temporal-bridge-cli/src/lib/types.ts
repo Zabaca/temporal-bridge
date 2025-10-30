@@ -60,6 +60,7 @@ export interface HookData {
   cwd: string;
   hook_event_name: string;
   stop_hook_active?: boolean;
+  prompt?: string;
 }
 
 export interface TranscriptMessage {
