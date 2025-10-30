@@ -11,11 +11,28 @@ export class TemporalBridgeToolsService {
     private readonly zepService: ZepService,
   ) {}
 
+  private mapScopeToZep(scope: 'episodes' | 'edges' | 'nodes'): Zep.GraphSearchScope {
+    switch (scope) {
+      case 'edges':
+        return Zep.GraphSearchScope.Edges;
+      case 'nodes':
+        return Zep.GraphSearchScope.Nodes;
+      case 'episodes':
+      default:
+        return Zep.GraphSearchScope.Episodes;
+    }
+  }
+
   @FilteredTool({
     name: 'search_personal',
     description: 'Search your personal conversation history only',
     parameters: z.object({
       query: z.string().describe('Search query to search personal memories'),
+      scope: z
+        .enum(['episodes', 'edges', 'nodes'])
+        .optional()
+        .default('episodes')
+        .describe('Search scope: episodes (conversations), edges (facts/relationships), nodes (entities)'),
       limit: z.number().optional().default(5).describe('Number of results to return'),
       reranker: z
         .enum(['cross_encoder', 'none'])
@@ -24,12 +41,19 @@ export class TemporalBridgeToolsService {
         .describe('Reranker type for better accuracy'),
     }),
   })
-  async searchPersonal(input: { query: string; limit?: number; reranker?: 'cross_encoder' | 'none' }) {
-    const results = await this.memoryTools.searchMemory(input.query, 'episodes', input.limit || 5, input.reranker);
+  async searchPersonal(input: {
+    query: string;
+    scope?: 'episodes' | 'edges' | 'nodes';
+    limit?: number;
+    reranker?: 'cross_encoder' | 'none';
+  }) {
+    const searchScope = this.mapScopeToZep(input.scope || 'episodes');
+    const results = await this.memoryTools.searchMemory(input.query, searchScope, input.limit || 5, input.reranker);
 
     return {
       source: 'personal',
       query: input.query,
+      scope: input.scope || 'episodes',
       results: results.map((r) => ({
         content: r.content,
         score: r.score,
